@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- SECURITY FIX: CSRF token na binabasa ng app.js para ilagay sa header ng bawat POST/PUT/PATCH/DELETE request -->
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Harvestly</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!-- FIXED: Modal Backdrop Wrapper with Enhanced Design -->
+  <div id="modal-backdrop" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="success-icon-wrap">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h2 id="modal-title" class="modal-title">Successfully Saved!</h2>
+      <p id="modal-sub" class="modal-sub">New data has been recorded into your farm monitoring.</p>
+      <div class="modal-summary-box">
+        <div class="modal-summary-row">
+          <span class="modal-summary-label">Name / Type:</span>
+          <span id="modal-sum-name" class="modal-summary-val">-</span>
+        </div>
+        <div class="modal-summary-row">
+          <span class="modal-summary-label">Date:</span>
+          <span id="modal-sum-date" class="modal-summary-val">-</span>
+        </div>
+        <div class="modal-summary-row">
+          <span class="modal-summary-label">Total Amount:</span>
+          <span id="modal-sum-amount" class="modal-summary-val">-</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="btn-modal-view" class="btn btn-primary btn-block">View Records</button>
+        <button id="btn-modal-add-another" class="btn btn-secondary btn-block">Add Another Entry</button>
+      </div>
+    </div>
+  </div>
+  <!-- COMPUTATION RESULT POPUP (Income: Per Month / Product) -->
+  <div id="computation-modal-backdrop" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="success-icon-wrap">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 3h6M12 3v6M4 21h16M6 21V9l6-3 6 3v12"/>
+        </svg>
+      </div>
+      <h2 class="modal-title">Computation Result</h2>
+      <p class="modal-sub" id="comp-modal-sub">-</p>
+      <div class="modal-summary-box">
+        <div class="modal-summary-row">
+          <span class="modal-summary-label">Product Sales:</span>
+          <span id="comp-modal-sales" class="modal-summary-val">₱0.00</span>
+        </div>
+        <div class="modal-summary-row">
+          <span class="modal-summary-label">Expenses Entered:</span>
+          <span id="comp-modal-exp" class="modal-summary-val">₱0.00</span>
+        </div>
+        <div class="modal-summary-row">
+          <span class="modal-summary-label">Computed Net Income:</span>
+          <span id="comp-modal-net" class="modal-summary-val">₱0.00</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btn-comp-modal-close" class="btn btn-primary btn-block">Got it</button>
+      </div>
+    </div>
+  </div>
+  <!-- HARVEST RATING POPUP (shows on Dashboard after actual income / harvest is saved) -->
+  <div id="harvest-rating-backdrop" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="success-icon-wrap">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.2-5.4 3.2 1.3-6-4.6-4.1 6.1-.6z"/>
+        </svg>
+      </div>
+      <h2 class="modal-title">Rate this Harvest</h2>
+      <p class="modal-sub" id="harvest-rating-sub">How was <strong id="harvest-rating-product-name">this product</strong>'s harvest?</p>
+      <div id="harvest-star-rating" class="star-rating" data-rating="0" style="justify-content: center; margin: 12px 0;">
+        <button type="button" class="star-btn" data-value="1" aria-label="1 star">★</button>
+        <button type="button" class="star-btn" data-value="2" aria-label="2 stars">★</button>
+        <button type="button" class="star-btn" data-value="3" aria-label="3 stars">★</button>
+        <button type="button" class="star-btn" data-value="4" aria-label="4 stars">★</button>
+        <button type="button" class="star-btn" data-value="5" aria-label="5 stars">★</button>
+      </div>
+      <p class="pricing-guide-note">Makikita rin ang rating na ito sa Admin dashboard.</p>
+      <div class="modal-actions">
+        <button type="button" id="btn-harvest-rating-close" class="btn btn-secondary btn-block">Skip</button>
+      </div>
+    </div>
+  </div>
+  <!-- PRODUCE VIEW DETAILS MODAL (countdown + linked expenses) -->
+  <div id="produce-detail-backdrop" class="modal-backdrop">
+    <div class="modal-card produce-detail-card">
+      <h2 class="modal-title" id="pd-title">Produce</h2>
+      <p class="modal-sub" id="pd-sub">Expenses for this product, and harvest countdown</p>
+      <div class="modal-summary-box">
+        <div class="modal-summary-row">
+          <span class="modal-summary-label">Price per kilo:</span>
+          <span id="pd-price" class="modal-summary-val">-</span>
+        </div>
+        <div class="modal-summary-row">
+          <span class="modal-summary-label">Total Sales:</span>
+          <span id="pd-total" class="modal-summary-val">-</span>
+        </div>
+        <div class="modal-summary-row">
+          <span class="modal-summary-label">Date recorded:</span>
+          <span id="pd-date" class="modal-summary-val">-</span>
+        </div>
+      </div>
+      <div id="pd-locked-banner" class="pd-locked-banner" style="display: none;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <span>Tapos na ang harvest cycle ng product na ito (naitala na ang Actual Income). Hindi na ito maaaring baguhin.</span>
+      </div>
+      <div class="panel pricing-guide-panel pd-inline-panel">
+        <div class="panel-head"><h2>Estimated Harvest Countdown</h2></div>
+        <p class="pricing-guide-sub">Typical growing duration for <strong id="pd-crop-name">this crop</strong>: <strong id="pd-harvest-months">-</strong></p>
+        <p class="pricing-guide-sub">Estimated harvest date: <strong id="pd-harvest-date">-</strong></p>
+        <div class="pricing-calc-row pricing-calc-row--highlight">
+          <span>Countdown</span>
+          <strong id="pd-countdown">-</strong>
+        </div>
+        <p class="pricing-guide-note">Estimate lang ito base sa karaniwang tagal ng pagtubo ng pananim — maaaring iba-iba depende sa lokasyon at klima.</p>
+      </div>
+      <div class="panel pd-inline-panel">
+        <div class="panel-head"><h2>Linked Expenses (hal. Fertilizer)</h2></div>
+        <div id="pd-expense-list" class="record-list"></div>
+        <p class="pricing-guide-sub" style="margin-top: 8px;">Total linked expenses: <strong id="pd-expense-total">₱0.00</strong></p>
+        <form id="form-pd-add-expense" class="pd-add-expense-form">
+          <select id="pd-expense-category">
+            <option value="Fertilizer">Fertilizer</option>
+            <option value="Seeds">Seeds</option>
+            <option value="Pesticide">Pesticide</option>
+            <option value="Labor / Wages">Labor / Wages</option>
+            <option value="Utilities / Fuel">Utilities / Fuel</option>
+            <option value="Transportation">Transportation</option>
+            <option value="Other Expenses">Others (Misc)</option>
+          </select>
+          <div class="expense-input-wrap">
+            <span class="expense-peso">₱</span>
+            <input type="number" id="pd-expense-amount" min="0" step="0.01" placeholder="0.00" required>
+          </div>
+          <button type="submit" class="btn btn-primary">+ Add</button>
+        </form>
+        <p class="pricing-guide-note">Kulang ang gastos (hal. fertilizer)? Mag-add ng bago. May sobra/mali? I-delete ang entry — mababawas ito agad sa total expenses ng produce na ito.</p>
+      </div>
+      <div class="panel pd-inline-panel">
+        <div class="panel-head"><h2>Pricing Calculator</h2></div>
+        <label class="field">
+          <span>Enter Profit Margin (1 - 50%)</span>
+          <div class="percent-input-wrap">
+            <input type="number" id="produce-profit-margin" min="1" max="50" step="0.01" value="10" placeholder="Example: 28">
+            <span class="percent-sign">%</span>
+          </div>
+        </label>
+        <p class="pricing-guide-sub">Total linked expenses (basis): <strong id="pricing-guide-expenses">₱0.00</strong></p>
+        <p class="pricing-guide-sub">Automatic Profit (Percentage): <strong id="pricing-margin-display">10%</strong></p>
+        <div class="pricing-calc-results">
+          <div class="pricing-calc-row pricing-calc-row--highlight">
+            <span>Total Sales Target (bawi + kita)</span>
+            <strong id="pricing-target-sales">₱0.00</strong>
+          </div>
+          <div class="pricing-calc-row">
+            <span>Target Profit (amount)</span>
+            <strong id="pricing-target-profit" class="record-amount--positive">₱0.00</strong>
+          </div>
+        </div>
+        <p class="pricing-guide-sub" style="margin-top: 14px;">Presyo per Kilo depende sa bilang ng aanihin (pumili ng pinaka-malapit sa inaasahan mong ani):</p>
+        <div id="pricing-kilo-table" class="pricing-kilo-table"></div>
+        <p class="pricing-guide-note">Base lang ito sa iyong sariling gastos (expenses) at profit margin — hindi kinukwenta ang presyo sa palengke, para tiyak na mababawi mo ang puhunan.</p>
+        <button type="button" id="btn-pd-save-pricing" class="btn btn-primary btn-block" style="margin-top: 12px;" disabled>Save Pricing</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btn-pd-close" class="btn btn-secondary btn-block">Close</button>
+      </div>
+    </div>
+  </div>
+  <!-- PRICING SAVED CONFIRMATION POPUP (stacks on top of the Produce Detail modal) -->
+  <div id="pricing-saved-backdrop" class="modal-backdrop modal-backdrop--stacked">
+    <div class="modal-card" style="max-width: 380px;">
+      <div class="success-icon-wrap">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h2 class="modal-title">Pricing Saved!</h2>
+      <p class="modal-sub" id="pricing-saved-sub">Naitala na ang bagong presyo ng produkto na ito.</p>
+      <div class="modal-summary-box">
+        <div class="modal-summary-row">
+          <span class="modal-summary-label">Presyo per kilo:</span>
+          <span id="pricing-saved-price" class="modal-summary-val">-</span>
+        </div>
+        <div class="modal-summary-row">
+          <span class="modal-summary-label">Batay sa bilang ng kilo:</span>
+          <span id="pricing-saved-kg" class="modal-summary-val">-</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btn-pricing-saved-close" class="btn btn-primary btn-block">OK</button>
+      </div>
+    </div>
+  </div>
+  <!-- SPLASH SCREEN -->
+  <section id="screen-splash" class="screen screen--splash active">
+    <div class="splash-farmbg" aria-hidden="true">
+      <img src="{{ url_for('static', filename='cornfield1.png') }}" alt="Cornfield" class="cornfield-bg-img pic-1 active-slide">
+      <img src="{{ url_for('static', filename='cornfield2.png') }}" alt="Cornfield 2" class="cornfield-bg-img pic-2">
+    </div>
+    <div class="splash-content">
+      <div class="splash-icon" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="30" height="30">
+          <path d="M24 4C24 4 24 16 24 24C24 32 20 38 14 40" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+          <path d="M24 24C24 24 24 12 24 8C29 8 33 12 33 17C33 22 29 25 24 24Z" fill="currentColor" opacity="0.9"/>
+          <path d="M24 18C24 18 24 8 24 6C19 6 15 10 15 15C15 20 19 23 24 18Z" fill="currentColor" opacity="0.75"/>
+          <path d="M14 40C14 40 22 39 24 32" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+      <h1 class="splash-title">Harvestly</h1>
+      <p class="splash-tag">Digital record keeping for your farm produce and expenses</p>
+      <button id="btn-splash-enter" class="splash-enter-btn" aria-label="Proceed to Log in">
+        <svg viewBox="0 0 24 24" width="26" height="26"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+      </button>
+      <p class="splash-enter-label">Get Started</p>
+    </div>
+  </section>
+  <!-- AUTH SCREEN -->
+  <section id="screen-auth" class="screen screen--auth">
+    <div class="auth-farmbg" aria-hidden="true">
+      <img src="{{ url_for('static', filename='cornfield1.png') }}" alt="Cornfield 1" class="cornfield-bg-img pic-1 active-slide">
+      <img src="{{ url_for('static', filename='cornfield2.png') }}" alt="Cornfield 2" class="cornfield-bg-img pic-2">
+    </div>
+    <div class="auth-wrap">
+      <div class="auth-brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="40" height="40">
+            <path d="M24 6C24 6 12 14 12 26C12 34.28 17.72 40 24 40C30.28 40 36 34.28 36 26C36 14 24 6 24 6Z" fill="none" stroke="currentColor" stroke-width="2.2"/>
+            <path d="M24 40V22" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M24 28C24 28 18 26 18 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <div>
+          <p class="brand-word">Harvestly</p>
+          <p class="brand-tag">Digital record keeping for farm produce &amp; expenses</p>
+        </div>
+      </div>
+      <div class="auth-card">
+        <form id="form-login" class="auth-form active" data-panel="login" novalidate>
+          <p class="field-error" id="login-error" hidden></p>
+          <p class="field-success" id="login-info" hidden></p>
+          <label class="field">
+            <span>Email</span>
+            <input type="email" id="login-identifier" autocomplete="email" placeholder="e.g. juan@email.com" required>
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <div class="password-field-wrap">
+              <input type="password" id="login-password" autocomplete="current-password" required>
+              <button type="button" class="toggle-password-btn" data-target="login-password" aria-label="Show or hide password">SHOW</button>
+            </div>
+          </label>
+          <p class="auth-forgot-link-wrap">
+            <button type="button" class="auth-switch-link" data-tab="forgot">Forgot password?</button>
+          </p>
+          <button type="submit" class="btn btn-primary btn-block">Log in</button>
+          <p class="auth-switch-prompt">Don't have an account? <button type="button" class="auth-switch-link" data-tab="signup">Register here</button></p>
+        </form>
+        <!-- EMAIL VERIFICATION PANEL (after signup with email, or when login blocked pending verification) -->
+        <form id="form-verify" class="auth-form" data-panel="verify" novalidate>
+          <p class="field-error" id="verify-error" hidden></p>
+          <p class="field-success" id="verify-info" hidden></p>
+          <p class="auth-panel-desc">Nagpadala kami ng 6-digit na verification code sa <strong id="verify-email-display">-</strong>. I-type ito sa ibaba.</p>
+          <input type="hidden" id="verify-email">
+          <label class="field">
+            <span>Verification code</span>
+            <input type="text" id="verify-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" required>
+          </label>
+          <button type="submit" class="btn btn-primary btn-block">Verify</button>
+          <p class="auth-switch-prompt">Hindi natanggap ang code? <button type="button" class="auth-switch-link" id="btn-resend-code">Resend code</button></p>
+          <p class="auth-switch-prompt"><button type="button" class="auth-switch-link" data-tab="login">Back to Log in</button></p>
+        </form>
+        <!-- FORGOT PASSWORD: STEP 1 — request a reset code by email -->
+        <form id="form-forgot" class="auth-form" data-panel="forgot" novalidate>
+          <p class="field-error" id="forgot-error" hidden></p>
+          <p class="field-success" id="forgot-info" hidden></p>
+          <p class="auth-panel-desc">Ilagay ang email na gamit mo sa account. Magpapadala kami ng reset code dito.</p>
+          <label class="field">
+            <span>Email</span>
+            <input type="text" id="forgot-email" autocomplete="email" placeholder="juan@email.com" required>
+          </label>
+          <button type="submit" class="btn btn-primary btn-block">Send reset code</button>
+          <p class="auth-switch-prompt"><button type="button" class="auth-switch-link" data-tab="login">Back to Log in</button></p>
+        </form>
+        <!-- FORGOT PASSWORD: STEP 2 — enter the code + new password -->
+        <form id="form-reset" class="auth-form" data-panel="reset" novalidate>
+          <p class="field-error" id="reset-error" hidden></p>
+          <p class="field-success" id="reset-info" hidden></p>
+          <p class="auth-panel-desc">Ipasok ang code na ipinadala sa <strong id="reset-email-display">-</strong> at ang bago mong password.</p>
+          <input type="hidden" id="reset-email">
+          <label class="field">
+            <span>Reset code</span>
+            <input type="text" id="reset-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" required>
+          </label>
+          <label class="field">
+            <span>New password</span>
+            <div class="password-field-wrap">
+              <input type="password" id="reset-new-password" autocomplete="new-password" minlength="6" required>
+              <button type="button" class="toggle-password-btn" data-target="reset-new-password" aria-label="Show or hide password">SHOW</button>
+            </div>
+          </label>
+          <label class="field">
+            <span>Confirm new password</span>
+            <div class="password-field-wrap">
+              <input type="password" id="reset-confirm-password" autocomplete="new-password" required>
+              <button type="button" class="toggle-password-btn" data-target="reset-confirm-password" aria-label="Show or hide password">SHOW</button>
+            </div>
+          </label>
+          <button type="submit" class="btn btn-primary btn-block">Reset password</button>
+          <p class="auth-switch-prompt"><button type="button" class="auth-switch-link" data-tab="login">Back to Log in</button></p>
+        </form>
+        <form id="form-signup" class="auth-form" data-panel="signup" novalidate>
+          <p class="field-error" id="signup-error" hidden></p>
+          <label class="field">
+            <span>Full name</span>
+            <input type="text" id="signup-name" required>
+          </label>
+          <label class="field">
+            <span>Username</span>
+            <input type="text" id="signup-username" required>
+          </label>
+          <label class="field">
+            <span>Phone Number or Email</span>
+            <input type="text" id="signup-contact" autocomplete="tel email" placeholder="e.g. 09171234567 or juan@email.com" required>
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <div class="password-field-wrap">
+              <input type="password" id="signup-password" minlength="6" required>
+              <button type="button" class="toggle-password-btn" data-target="signup-password" aria-label="Show or hide password">SHOW</button>
+            </div>
+          </label>
+          <label class="field">
+            <span>Confirm password</span>
+            <div class="password-field-wrap">
+              <input type="password" id="signup-confirm" required>
+              <button type="button" class="toggle-password-btn" data-target="signup-confirm" aria-label="Show or hide password">SHOW</button>
+            </div>
+          </label>
+          <div class="field">
+            <span>Choose an avatar</span>
+            <div class="avatar-picker" id="avatar-picker" role="group" aria-label="Choose an avatar">
+              <button type="button" class="avatar-option selected" data-avatar="🌾" aria-pressed="true">🌾</button>
+              <button type="button" class="avatar-option" data-avatar="🌽" aria-pressed="false">🌽</button>
+              <button type="button" class="avatar-option" data-avatar="🍅" aria-pressed="false">🍅</button>
+              <button type="button" class="avatar-option" data-avatar="🥕" aria-pressed="false">🥕</button>
+              <button type="button" class="avatar-option" data-avatar="🍓" aria-pressed="false">🍓</button>
+              <button type="button" class="avatar-option" data-avatar="🐄" aria-pressed="false">🐄</button>
+              <button type="button" class="avatar-option" data-avatar="🐓" aria-pressed="false">🐓</button>
+              <button type="button" class="avatar-option" data-avatar="👩‍🌾" aria-pressed="false">👩‍🌾</button>
+              <button type="button" class="avatar-option" data-avatar="👨‍🌾" aria-pressed="false">👨‍🌾</button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Create account</button>
+          <p class="auth-switch-prompt">Already have an account? <button type="button" class="auth-switch-link" data-tab="login">Log in here</button></p>
+        </form>
+      </div>
+    </div>
+  </section>
+  <!-- MAIN APP SHELL -->
+  <div id="app-shell" class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="28" height="28">
+            <path d="M24 6C24 6 12 14 12 26C12 34.28 17.72 40 24 40C30.28 40 36 34.28 36 26C36 14 24 6 24 6Z" fill="none" stroke="currentColor" stroke-width="2.4"/>
+            <path d="M24 40V22" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span>Harvestly</span>
+      </div>
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-item active" data-screen="dashboard">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="3" width="8" height="5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="10" width="8" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="13" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
+          Dashboard
+        </button>
+        <button type="button" class="nav-item" data-screen="add-expense">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+          Add expense
+        </button>
+        <button type="button" class="nav-item" data-screen="actual-income">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+          Income
+        </button>
+        <button type="button" class="nav-item" data-screen="records">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+          View / search records
+        </button>
+        <button type="button" class="nav-item" data-screen="reports">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 20V10M11 20V4M18 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+          Reports
+        </button>
+        <button type="button" class="nav-item" data-screen="support">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+          Customer Service
+        </button>
+      </nav>
+      <button id="btn-logout" type="button" class="nav-item nav-item--logout">
+        <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></span>
+        Log out
+      </button>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <button id="btn-menu" class="menu-toggle" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <h1 id="topbar-title">Home dashboard</h1>
+        <div class="topbar-user"><span class="topbar-avatar" id="topbar-avatar">🌾</span><span id="topbar-username">—</span></div>
+      </header>
+      <section id="screen-dashboard" class="screen active">
+        <p class="lede">This is a summary of your harvest, actual income, and expenses. Tap the buttons below to manage records.</p>
+        <div class="stat-row">
+          <div class="stat-card">
+            <span class="stat-tear" aria-hidden="true"></span>
+            <p class="stat-label">Expected Sales</p>
+            <p class="stat-value" id="stat-sales">₱0.00</p>
+          </div>
+          <div class="stat-card stat-card--income">
+            <span class="stat-tear" aria-hidden="true"></span>
+            <p class="stat-label">Actual Income</p>
+            <p class="stat-value" id="stat-actual-income">₱0.00</p>
+          </div>
+          <div class="stat-card">
+            <span class="stat-tear" aria-hidden="true"></span>
+            <p class="stat-label">Total Expenses</p>
+            <p class="stat-value" id="stat-expenses">₱0.00</p>
+          </div>
+          <div class="stat-card stat-card--profit" id="stat-profit-card">
+            <span class="stat-tear" aria-hidden="true"></span>
+            <p class="stat-label">Net Profit</p>
+            <p class="stat-value" id="stat-profit">₱0.00</p>
+          </div>
+        </div>
+        <div class="quick-actions">
+          <button type="button" class="btn btn-primary" data-screen="add-expense">+ Add Product & Expenses</button>
+          <button type="button" class="btn btn-outline" data-screen="actual-income">+ Add Actual Income</button>
+        </div>
+        <div id="subscription-banner" class="panel subscription-banner" style="display: none;">
+          <div id="subscription-banner-free">
+            <p class="subscription-banner-title">Free plan — <span id="cycle-count-label">0</span> / <span id="cycle-total-label">3</span> sessions used</p>
+            <p class="subscription-banner-sub">A session is 1 product + its expenses + its actual income. Once used up, adding new records will be locked until you subscribe.</p>
+          </div>
+          <div id="subscription-banner-locked" style="display: none;">
+            <p class="subscription-banner-title">Naubos na ang free sessions mo</p>
+            <p class="subscription-banner-sub">Nandito pa rin ang datos mo, pero naka-lock muna ang pagdagdag ng bagong record. Pumili ng plan sa ibaba — agad kang makakapagpatuloy pagkatapos mong i-GCash at ilagay ang reference number.</p>
+            <div class="plan-picker" id="plan-picker">
+              <button type="button" class="plan-option" data-plan="basic" data-price="100" data-sessions="4">
+                <span class="plan-option-price">₱100</span>
+                <span class="plan-option-sessions">4 sessions</span>
+              </button>
+              <button type="button" class="plan-option" data-plan="pro" data-price="500" data-sessions="21">
+                <span class="plan-option-price">₱500</span>
+                <span class="plan-option-sessions">21 sessions</span>
+              </button>
+            </div>
+            <div id="gcash-payment-box" style="display: none; margin-top: 12px;">
+              <p class="subscription-banner-sub">I-GCash ang <strong id="gcash-selected-amount">₱0</strong> sa:</p>
+              <p class="gcash-info-line"><strong id="gcash-display-name">—</strong> — <span id="gcash-display-number">—</span></p>
+              <div class="gcash-qr-wrap" id="gcash-qr-wrap" style="display: none;">
+                <img src="{{ url_for('static', filename='gcash-qr.png') }}" alt="GCash QR Code" id="gcash-qr-img" class="gcash-qr-img">
+                <p class="pricing-guide-note" style="text-align: center;">O i-scan ang QR gamit ang GCash app mo</p>
+              </div>
+              <label class="field" style="margin-top: 10px;">
+                <span>GCash Reference Number</span>
+                <input type="text" id="subscription-payment-ref" placeholder="e.g. 1234567890123">
+              </label>
+              <button type="button" id="btn-request-subscription" class="btn btn-primary">Subscribe Now</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel" id="dashboard-latest-computation-panel" style="display: none;">
+          <div class="panel-head">
+            <h2>Latest Income Computation</h2>
+          </div>
+          <div class="pricing-calc-results">
+            <div class="pricing-calc-row">
+              <span id="dash-comp-label">-</span>
+              <strong id="dash-comp-when">-</strong>
+            </div>
+            <div class="pricing-calc-row">
+              <span>Sales</span>
+              <strong id="dash-comp-sales">₱0.00</strong>
+            </div>
+            <div class="pricing-calc-row">
+              <span>Expenses</span>
+              <strong id="dash-comp-exp" style="color: var(--red);">₱0.00</strong>
+            </div>
+            <div class="pricing-calc-row pricing-calc-row--highlight">
+              <span>Computed Net Income</span>
+              <strong id="dash-comp-net">₱0.00</strong>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Recent records</h2>
+            <button type="button" class="link-btn" data-screen="records">View all</button>
+          </div>
+          <div id="recent-list" class="record-list"></div>
+        </div>
+      </section>
+      <section id="screen-actual-income" class="screen">
+        <p class="lede">Enter your Actual Income (cash on hand/collected), save it to your monitoring history, and compare it against combined Sales and Expenses.</p>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start;">
+          <form id="form-actual-income" style="flex: 1; min-width: 280px; max-width: 500px;">
+            <div class="panel">
+              <label class="field">
+                <span>Enter Actual Income (Collected or On-hand Cash)</span>
+                <div class="expense-input-wrap">
+                  <span class="expense-peso">₱</span>
+                  <input type="number" id="actual-income-input" min="0" step="0.01" placeholder="0.00" required>
+                </div>
+              </label>
+              <label class="field">
+                <span>Date Received / Encoded</span>
+                <input type="date" id="actual-income-date" required>
+              </label>
+              <button type="submit" class="btn btn-primary btn-block">Save Actual Income</button>
+            </div>
+          </form>
+          <div class="panel pricing-guide-panel" style="flex: 1; min-width: 280px; max-width: 500px;">
+            <div class="panel-head"><h2>Computation & Comparison (Per Month / Product)</h2></div>
+            <label class="field">
+              <span>Select Product</span>
+              <select id="comp-product-select"></select>
+            </label>
+            <label class="field">
+              <span>Select Month</span>
+              <select id="comp-month-select"></select>
+            </label>
+            <label class="field">
+              <span>Expenses for this Product</span>
+              <div class="expense-input-wrap">
+                <span class="expense-peso">₱</span>
+                <input type="number" id="comp-product-expenses" min="0" step="0.01" placeholder="0.00">
+              </div>
+            </label>
+            <button type="button" id="btn-compute-comparison" class="btn btn-primary btn-block">Compute</button>
+            <p class="pricing-guide-note" id="comp-prod-status-note">Select a product and month, then tap Compute to see the sales vs. expenses comparison for it.</p>
+          </div>
+        </div>
+        <div class="panel" style="margin-top: 20px;">
+          <div class="panel-head">
+            <h2>Actual Income Monitoring History</h2>
+          </div>
+          <div class="table-scroll">
+            <table class="records-table">
+              <thead>
+                <tr>
+                  <th>Date Saved</th>
+                  <th>Product(s) This Month</th>
+                  <th class="align-right">Actual Income Collected</th>
+                  <th class="align-right">Computed Net Income</th>
+                  <th class="align-right">Discrepancy / Difference</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="income-history-tbody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel" style="margin-top: 20px;">
+          <div class="panel-head">
+            <h2>Income Monitoring per Product</h2>
+          </div>
+          <div class="table-scroll">
+            <table class="records-table records-table--fixed">
+              <colgroup>
+                <col style="width: 28%;">
+                <col style="width: 20%;">
+                <col style="width: 20%;">
+                <col style="width: 20%;">
+                <col style="width: 12%;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th class="align-right">Total Actual Income</th>
+                  <th class="align-right">Total Computed Net</th>
+                  <th class="align-right">Total Discrepancy</th>
+                  <th class="align-right">Entries</th>
+                </tr>
+              </thead>
+              <tbody id="income-monitoring-product-tbody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <section id="screen-add-expense" class="screen">
+        <p class="lede">Enter the product/crop, then list down its expenses (e.g. Seeds, Fertilizer). You can set the Pricing later from "View Expenses for this Product" in View / search records.</p>
+        <form id="form-expense" class="record-form expense-form" novalidate>
+          <label class="field">
+            <span>Crop / produce name</span>
+            <input type="text" id="produce-name" placeholder="e.g. Tomato" required>
+          </label>
+          <div id="expense-rows-container">
+            <!-- Dynamic expense rows go here -->
+          </div>
+          <button type="button" id="btn-add-expense-row" class="btn btn-outline" style="margin-bottom: 20px;">
+            + Add another expense
+          </button>
+          <label class="field">
+            <span>Date</span>
+            <input type="date" id="expense-date" required>
+          </label>
+          <p class="expense-total-preview">Total Expense: <strong id="expense-calculated-total">₱0.00</strong></p>
+          <button type="submit" class="btn btn-primary btn-block">Save Product & Expenses</button>
+        </form>
+      </section>
+      <section id="screen-records" class="screen">
+        <p class="lede">Review your products and the expenses recorded for each one.</p>
+        <div class="records-toolbar">
+          <input type="text" id="records-search" placeholder="Search by product name...">
+        </div>
+        <div id="panel-records-produce" class="panel">
+          <div class="panel-head">
+            <h2>Expenses Details</h2>
+          </div>
+          <div class="table-scroll">
+            <table class="records-table records-table--fixed records-table--produce">
+              <colgroup>
+                <col style="width: 18%;">
+                <col style="width: 12%;">
+                <col style="width: 12%;">
+                <col style="width: 12%;">
+                <col style="width: 12%;">
+                <col style="width: 34%;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Product / Produce</th>
+                  <th class="align-right">Sales per Unit</th>
+                  <th class="align-right">Total Sales</th>
+                  <th class="align-right">Possible Profit</th>
+                  <th>Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="produce-tbody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <section id="screen-reports" class="screen">
+        <p class="lede">Analyze overall monthly monitoring, sales, expenses, and actual income summaries along with category breakdowns.</p>
+        <div class="records-toolbar" style="margin-bottom: 20px;">
+          <select id="report-month-filter" style="max-width: 250px;">
+          </select>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Monthly Financial Monitoring Overview</h2>
+          </div>
+          <div class="table-scroll">
+            <table class="records-table records-table--fixed">
+              <colgroup>
+                <col style="width: 28%;">
+                <col style="width: 24%;">
+                <col style="width: 24%;">
+                <col style="width: 24%;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th class="align-right">Sales (Benta)</th>
+                  <th class="align-right">Expenses (Gastos)</th>
+                  <th class="align-right">Actual Income</th>
+                </tr>
+              </thead>
+              <tbody id="monthly-monitoring-tbody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Monthly Trend (Bar Graph)</h2>
+          </div>
+          <div class="graph-legend">
+            <div class="legend-item"><span class="legend-dot sales"></span> Sales</div>
+            <div class="legend-item"><span class="legend-dot expenses"></span> Expenses</div>
+          </div>
+          <div class="line-graph-container" id="line-graph-box">
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2 id="monthly-expense-cat-title">Expense Breakdown by Category</h2>
+          </div>
+          <div class="table-scroll">
+            <table class="records-table records-table--fixed">
+              <colgroup>
+                <col style="width: 40%;">
+                <col style="width: 32%;">
+                <col style="width: 28%;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Expense Category</th>
+                  <th class="align-right">Total Amount Spent</th>
+                  <th class="align-right">Category Share (%)</th>
+                </tr>
+              </thead>
+              <tbody id="monthly-expense-cat-tbody">
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Total Expenses (Kabuuang Gastos)</td>
+                  <td class="align-right record-amount--negative" id="monthly-expense-total-val">₱0.00</td>
+                  <td class="align-right">100.0%</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2 id="monthly-products-title">Merged Product Financial Summary</h2>
+          </div>
+          <div class="table-scroll">
+            <table class="records-table records-table--fixed">
+              <colgroup>
+                <col style="width: 22%;">
+                <col style="width: 15%;">
+                <col style="width: 16%;">
+                <col style="width: 17%;">
+                <col style="width: 15%;">
+                <col style="width: 15%;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Product / Produce</th>
+                  <th class="align-right">Total Qty</th>
+                  <th class="align-right">Total Sales</th>
+                  <th class="align-right">Estimated Expenses</th>
+                  <th class="align-right">Profit Margin (%)</th>
+                  <th class="align-right">Sales Share (%)</th>
+                </tr>
+              </thead>
+              <tbody id="monthly-products-tbody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <section id="screen-support" class="screen">
+        <p class="lede">May tanong o concern ka ba tungkol sa app o sa account mo? I-send dito — makikita ito ng admin at sasagutin dito rin ang reply.</p>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Send a concern</h2>
+          </div>
+          <form id="form-support">
+            <label class="field">
+              <span>Subject (optional)</span>
+              <input type="text" id="support-subject" maxlength="150" placeholder="hal. Tungkol sa subscription ko">
+            </label>
+            <label class="field">
+              <span>Message</span>
+              <textarea id="support-message" rows="4" maxlength="2000" placeholder="I-type dito ang concern mo..." required></textarea>
+            </label>
+            <p class="field-error" id="support-error" hidden></p>
+            <p class="field-success" id="support-success" hidden></p>
+            <button type="submit" class="btn btn-primary">Send</button>
+          </form>
+        </div>
+        <div class="panel" style="margin-top: 20px;">
+          <div class="panel-head">
+            <h2>Your concerns</h2>
+          </div>
+          <div id="support-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <!-- ADMIN SHELL (shown only for role=admin after login) -->
+  <div id="admin-shell" class="app-shell" style="display: none;">
+    <aside class="sidebar" id="admin-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="28" height="28">
+            <path d="M24 6C24 6 12 14 12 26C12 34.28 17.72 40 24 40C30.28 40 36 34.28 36 26C36 14 24 6 24 6Z" fill="none" stroke="currentColor" stroke-width="2.4"/>
+            <path d="M24 40V22" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span>Harvestly Admin</span>
+      </div>
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-item active" id="btn-admin-nav-support">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+          Customer Service
+          <span class="nav-badge" id="admin-support-badge" style="display: none;">0</span>
+        </button>
+      </nav>
+      <button id="btn-admin-logout" type="button" class="nav-item nav-item--logout">
+        <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></span>
+        Log out
+      </button>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <button id="btn-admin-menu" class="menu-toggle" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <h1 id="admin-topbar-title">Customer Service</h1>
+        <div class="topbar-user"><span class="topbar-avatar" id="admin-topbar-avatar">🌾</span><span id="admin-topbar-username">—</span></div>
+      </header>
+      <section id="screen-admin-support" class="screen active">
+        <p class="lede">Mga concern na ipinadala ng mga farmer. Sagutin ang mga bagong (Open) na concern sa ibaba — makikita agad ng farmer ang reply mo.</p>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Concerns</h2>
+          </div>
+          <div id="admin-support-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
