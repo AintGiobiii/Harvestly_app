@@ -827,7 +827,7 @@
     </main>
   </div>
   <!-- ADMIN SHELL (shown only for role=admin after login) -->
-  <div id="admin-shell" class="app-shell" style="display: none;">
+  <div id="admin-shell" class="app-shell admin-shell" style="display: none;">
     <aside class="sidebar" id="admin-sidebar">
       <div class="sidebar-brand">
         <div class="brand-mark" aria-hidden="true">
@@ -839,7 +839,11 @@
         <span>Harvestly Admin</span>
       </div>
       <nav class="sidebar-nav">
-        <button type="button" class="nav-item active" id="btn-admin-nav-support">
+        <button type="button" class="nav-item active" id="btn-admin-nav-dashboard">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><rect x="3" y="3" width="7" height="8" rx="1.6" stroke="currentColor" stroke-width="1.8" fill="none"/><rect x="14" y="3" width="7" height="5" rx="1.6" stroke="currentColor" stroke-width="1.8" fill="none"/><rect x="14" y="11" width="7" height="10" rx="1.6" stroke="currentColor" stroke-width="1.8" fill="none"/><rect x="3" y="14" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" fill="none"/></svg></span>
+          Dashboard
+        </button>
+        <button type="button" class="nav-item" id="btn-admin-nav-support">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
           Customer Service
           <span class="nav-badge" id="admin-support-badge" style="display: none;">0</span>
@@ -855,10 +859,93 @@
         <button id="btn-admin-menu" class="menu-toggle" aria-label="Open menu">
           <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
-        <h1 id="admin-topbar-title">Customer Service</h1>
+        <h1 id="admin-topbar-title">Dashboard</h1>
         <div class="topbar-user"><span class="topbar-avatar" id="admin-topbar-avatar">🌾</span><span id="admin-topbar-username">—</span></div>
       </header>
-      <section id="screen-admin-support" class="screen active">
+      <section id="screen-admin-dashboard" class="screen active">
+        <div class="adm-greet">
+          <h2>Welcome back, <span id="adm-greet-name">Admin</span> <span class="adm-wave" aria-hidden="true">👋</span></h2>
+          <p class="adm-greet-sub" id="adm-period">Buod ng buong Harvestly</p>
+        </div>
+
+        <div class="adm-top-grid">
+          <!-- HERO: kabuuang halaga ng ani -->
+          <article class="adm-card adm-hero">
+            <p class="adm-label">Kabuuang Halaga ng Ani</p>
+            <p class="adm-hero-num" id="adm-produce">&#8369;0.00</p>
+            <span class="adm-delta" id="adm-produce-delta">&mdash;</span>
+            <div class="adm-hero-sub">
+              <div>
+                <p class="adm-label">Gastos</p>
+                <p class="adm-sub-num" id="adm-expense">&#8369;0.00</p>
+              </div>
+              <div>
+                <p class="adm-label">Net / Tubo</p>
+                <p class="adm-sub-num" id="adm-net">&#8369;0.00</p>
+              </div>
+            </div>
+          </article>
+
+          <!-- 3 MINI STAT CARDS -->
+          <div class="adm-side">
+            <article class="adm-card adm-mini">
+              <div>
+                <p class="adm-label">Aktibong Farmer</p>
+                <p class="adm-mini-num" id="adm-active">0</p>
+              </div>
+              <span class="adm-delta" id="adm-active-delta">&mdash;</span>
+            </article>
+            <article class="adm-card adm-mini">
+              <div>
+                <p class="adm-label">Naitalang Ani</p>
+                <p class="adm-mini-num" id="adm-logged">0</p>
+              </div>
+              <span class="adm-delta" id="adm-logged-delta">&mdash;</span>
+            </article>
+            <article class="adm-card adm-mini">
+              <div>
+                <p class="adm-label">Bukas na Concern</p>
+                <p class="adm-mini-num" id="adm-concerns">0</p>
+              </div>
+              <span class="adm-delta adm-delta--muted" id="adm-concerns-note">&mdash;</span>
+            </article>
+          </div>
+        </div>
+
+        <!-- CHART -->
+        <article class="adm-card adm-chart-card">
+          <div class="adm-card-head">
+            <h3>Ani vs. Gastos kada araw</h3>
+            <div class="adm-range" role="group" aria-label="Saklaw ng petsa">
+              <button type="button" class="adm-range-btn" data-range="7">7d</button>
+              <button type="button" class="adm-range-btn active" data-range="30">30d</button>
+              <button type="button" class="adm-range-btn" data-range="90">90d</button>
+            </div>
+          </div>
+          <div class="adm-legend">
+            <span class="adm-leg"><i class="adm-dot adm-dot--produce"></i>Ani</span>
+            <span class="adm-leg"><i class="adm-dot adm-dot--expense"></i>Gastos</span>
+          </div>
+          <div class="adm-chart-wrap" id="adm-chart-wrap">
+            <svg id="adm-chart" viewBox="0 0 700 200" preserveAspectRatio="none" role="img" aria-label="Line chart ng ani at gastos"></svg>
+            <div class="adm-chart-axis">
+              <span id="adm-axis-start">&mdash;</span>
+              <span id="adm-axis-mid">&mdash;</span>
+              <span id="adm-axis-end">&mdash;</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- RECENT ACTIVITY -->
+        <article class="adm-card adm-table-card">
+          <div class="adm-card-head">
+            <h3>Pinakabagong Talaan</h3>
+            <span class="adm-foot-note" id="adm-farmers-note">&mdash;</span>
+          </div>
+          <div class="adm-rows" id="adm-activity"></div>
+        </article>
+      </section>
+      <section id="screen-admin-support" class="screen">
         <p class="lede">Mga concern na ipinadala ng mga farmer. Sagutin ang mga bagong (Open) na concern sa ibaba — makikita agad ng farmer ang reply mo.</p>
         <div class="panel">
           <div class="panel-head">
