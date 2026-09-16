@@ -223,7 +223,12 @@
         <svg viewBox="0 0 24 24" width="26" height="26"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
       </button>
       <p class="splash-enter-label">Get Started</p>
-      <button type="button" id="btn-about-splash" class="about-us-btn">About Us</button>
+    </div>
+    <div class="screen-bottom-bar">
+      <button type="button" id="btn-about-splash" class="about-us-btn">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M12 11v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.1" fill="currentColor"/></svg>
+        About Us
+      </button>
     </div>
   </section>
   <!-- AUTH SCREEN -->
@@ -366,7 +371,12 @@
           <p class="auth-switch-prompt">Already have an account? <button type="button" class="auth-switch-link" data-tab="login">Log in here</button></p>
         </form>
       </div>
-      <button type="button" id="btn-about-auth" class="about-us-btn">About Us</button>
+    </div>
+    <div class="screen-bottom-bar">
+      <button type="button" id="btn-about-auth" class="about-us-btn">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M12 11v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.1" fill="currentColor"/></svg>
+        About Us
+      </button>
     </div>
   </section>
   <!-- ABOUT US SCREEN -->
@@ -375,11 +385,11 @@
       <img src="{{ url_for('static', filename='cornfield1.png') }}" alt="Cornfield 1" class="cornfield-bg-img pic-1 active-slide">
       <img src="{{ url_for('static', filename='cornfield2.png') }}" alt="Cornfield 2" class="cornfield-bg-img pic-2">
     </div>
+    <button type="button" id="btn-about-back" class="about-back-btn js-about-back" aria-label="Bumalik sa nakaraang page">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+      <span>Back</span>
+    </button>
     <div class="auth-wrap">
-      <button type="button" id="btn-about-back" class="about-back-btn" aria-label="Bumalik">
-        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-        Back
-      </button>
       <div class="auth-card about-card">
         <h1 class="about-title">About Us</h1>
         <p class="about-text">Ang Harvestly ay isang digital record-keeping app na ginawa para tulungan ang mga farmer na madaling subaybayan ang kanilang mga produce, gastos, at kita — sa halip na papel at manu-manong pagkuwenta.</p>
@@ -389,6 +399,12 @@
           <p class="about-text">May tanong ka ba o kailangan ng tulong? Gamitin ang Customer Service sa loob ng app pagkatapos mag-login, o makipag-ugnayan sa amin.</p>
         </div>
       </div>
+    </div>
+    <div class="screen-bottom-bar">
+      <button type="button" class="about-us-btn js-about-back">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+        Bumalik sa Log in / Register
+      </button>
     </div>
   </section>
   <!-- MAIN APP SHELL -->
