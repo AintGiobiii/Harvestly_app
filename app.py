@@ -1195,16 +1195,6 @@ def admin_reply_support_message(msg_id):
 # pwedeng magpatakbo ng arbitrary code kung mag-crash ang app. Ngayon,
 # naka-off na ito by default; i-set lang FLASK_DEBUG=1 sa environment kapag
 # lokal na pagta-test.
-
-@app.route('/reset-admin')
-def reset_admin():
-    user = User.query.filter_by(email='admin@harvestly.local').first()
-    if user:
-        user.password_hash = bcrypt.generate_password_hash('Admin123!').decode('utf-8')
-        db.session.commit()
-        return "Password successfully updated to: Admin123!"
-    return "Admin user not found!"
-
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
     app.run(debug=debug_mode, port=5000)
