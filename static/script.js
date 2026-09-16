@@ -196,14 +196,19 @@ if (btnAboutAuth) {
     screenAbout?.classList?.add('active');
   });
 }
-const btnAboutBack = document.getElementById('btn-about-back');
-if (btnAboutBack) {
-  btnAboutBack.addEventListener('click', () => {
-    screenAbout?.classList?.remove('active');
-    if (aboutCameFrom === 'auth') screenAuth?.classList?.add('active');
-    else screenSplash?.classList?.add('active');
-  });
+// Lahat ng back control sa About Us screen (icon sa taas + pill sa ibaba)
+function goBackFromAbout() {
+  screenAbout?.classList?.remove('active');
+  if (aboutCameFrom === 'auth') screenAuth?.classList?.add('active');
+  else screenSplash?.classList?.add('active');
 }
+document.querySelectorAll('.js-about-back').forEach(btn => {
+  btn.addEventListener('click', goBackFromAbout);
+});
+// Escape key = back din, para mabilis lumabas sa About Us
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && screenAbout?.classList?.contains('active')) goBackFromAbout();
+});
 // Auth Switch Links (Login / Signup / Verify / Forgot / Reset Toggle)
 // Tandaan: hindi lahat ng .auth-switch-link ay panel-switcher (hal. ang
 // "Resend code" button ay may sarili niyang handler sa baba) — kaya kung
