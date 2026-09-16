@@ -384,6 +384,47 @@ button, input, select {
   background: none; border: none; padding: 0; color: var(--forest);
   font-weight: 700; font-size: 13.5px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
 }
+/* ABOUT US / CONTACT US */
+.about-us-btn {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.about-us-btn:hover { background: rgba(255,255,255,0.22); }
+.about-back-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.about-back-btn:hover { background: rgba(255,255,255,0.22); }
+.about-card { max-height: 80vh; overflow-y: auto; }
+.about-title { font-family: var(--font-display); font-size: 22px; margin: 0 0 14px; color: var(--ink); text-align: center; }
+.about-text { font-size: 14px; line-height: 1.6; color: var(--ink); margin: 0 0 14px; }
+.about-contact-block { text-align: center; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+.about-contact-label { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--forest); margin: 0 0 8px; }
 /* EMAIL VERIFICATION / FORGOT PASSWORD (new) */
 .auth-forgot-link-wrap { text-align: right; margin: -6px 0 16px; }
 .auth-forgot-link-wrap .auth-switch-link { font-weight: 600; font-size: 13px; }
