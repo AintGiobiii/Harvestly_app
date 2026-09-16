@@ -177,6 +177,33 @@ if (btnSplashEnter) {
     screenAuth?.classList?.add('active');
   });
 }
+// About Us screen (accessible mula splash o auth, babalik sa pinanggalingan)
+const screenAbout = document.getElementById('screen-about');
+let aboutCameFrom = 'splash';
+const btnAboutSplash = document.getElementById('btn-about-splash');
+if (btnAboutSplash) {
+  btnAboutSplash.addEventListener('click', () => {
+    aboutCameFrom = 'splash';
+    screenSplash?.classList?.remove('active');
+    screenAbout?.classList?.add('active');
+  });
+}
+const btnAboutAuth = document.getElementById('btn-about-auth');
+if (btnAboutAuth) {
+  btnAboutAuth.addEventListener('click', () => {
+    aboutCameFrom = 'auth';
+    screenAuth?.classList?.remove('active');
+    screenAbout?.classList?.add('active');
+  });
+}
+const btnAboutBack = document.getElementById('btn-about-back');
+if (btnAboutBack) {
+  btnAboutBack.addEventListener('click', () => {
+    screenAbout?.classList?.remove('active');
+    if (aboutCameFrom === 'auth') screenAuth?.classList?.add('active');
+    else screenSplash?.classList?.add('active');
+  });
+}
 // Auth Switch Links (Login / Signup / Verify / Forgot / Reset Toggle)
 // Tandaan: hindi lahat ng .auth-switch-link ay panel-switcher (hal. ang
 // "Resend code" button ay may sarili niyang handler sa baba) — kaya kung
