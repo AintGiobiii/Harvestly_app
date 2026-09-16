@@ -538,6 +538,8 @@ async function enterAdminApp() {
   if (adminTopbarUser) adminTopbarUser.textContent = currentUser;
   const adminTopbarAvatar = document.getElementById('admin-topbar-avatar');
   if (adminTopbarAvatar) adminTopbarAvatar.textContent = currentAvatar;
+  // Dashboard ang unang makikita; kinukuha pa rin ang support para sa badge count.
+  await renderAdminDashboard();
   await renderAdminSupportMessages();
 }
 const btnAdminMenu = document.getElementById('btn-admin-menu');
@@ -686,13 +688,212 @@ async function renderAdminSupportMessages() {
     console.error('Error loading admin support messages:', e);
   }
 }
+// ==================== ADMIN DASHBOARD ====================
+// Buod ng buong sistema para sa admin: halaga ng ani, gastos, net, bilang ng
+// aktibong farmer, chart kada araw, at pinakabagong talaan ng lahat ng farmer.
+// Read-only lahat — galing sa /api/admin/dashboard.
+let adminRangeDays = 30;
+
+function admPeso(n) {
+  const v = Number(n) || 0;
+  return '\u20B1' + v.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function admShortDate(iso) {
+  if (!iso) return '\u2014';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Naglalagay ng "+12.5%" na pill. null = walang mapagbatayan (bago pa lang).
+function admSetDelta(elId, pct, opts) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const invert = opts && opts.invert;   // para sa gastos: pagtaas = hindi maganda
+  el.classList.remove('adm-delta--down', 'adm-delta--muted');
+  if (pct === null || pct === undefined || !isFinite(pct)) {
+    el.classList.add('adm-delta--muted');
+    el.textContent = 'walang datos noon';
+    return;
+  }
+  const up = pct >= 0;
+  const good = invert ? !up : up;
+  if (!good) el.classList.add('adm-delta--down');
+  const arrow = up ? '\u2197' : '\u2198';
+  el.textContent = `${arrow} ${up ? '+' : ''}${pct}% vs nakaraan`;
+}
+
+// Gumagawa ng makinis na cubic path mula sa listahan ng values.
+function admLinePath(vals, max, w, top, bottom) {
+  const n = vals.length;
+  if (!n) return '';
+  const pts = vals.map((v, i) => [
+    n === 1 ? w / 2 : (i / (n - 1)) * w,
+    bottom - (max > 0 ? (Number(v) || 0) / max : 0) * (bottom - top)
+  ]);
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 1; i < n; i++) {
+    const [x0, y0] = pts[i - 1];
+    const [x1, y1] = pts[i];
+    const cx = (x0 + x1) / 2;
+    d += ` C${cx.toFixed(1)},${y0.toFixed(1)} ${cx.toFixed(1)},${y1.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+  }
+  return d;
+}
+
+function admRenderChart(series) {
+  const svg = document.getElementById('adm-chart');
+  const wrap = document.getElementById('adm-chart-wrap');
+  if (!svg || !wrap) return;
+  const old = wrap.querySelector('.adm-chart-empty');
+  if (old) old.remove();
+
+  const produce = series.map(p => p.produce);
+  const expense = series.map(p => p.expense);
+  const max = Math.max(0, ...produce, ...expense);
+
+  if (!series.length || max <= 0) {
+    svg.innerHTML = '';
+    svg.style.display = 'none';
+    const empty = document.createElement('div');
+    empty.className = 'adm-chart-empty';
+    empty.textContent = 'Wala pang naitalang ani o gastos sa saklaw na ito.';
+    wrap.prepend(empty);
+    return;
+  }
+  svg.style.display = 'block';
+
+  const W = 700, TOP = 14, BOT = 186;
+  const grid = [0, 0.25, 0.5, 0.75, 1]
+    .map(t => `<line x1="0" y1="${(BOT - t * (BOT - TOP)).toFixed(1)}" x2="${W}" y2="${(BOT - t * (BOT - TOP)).toFixed(1)}" stroke="#252d38" stroke-width="1" stroke-dasharray="3 5" vector-effect="non-scaling-stroke"/>`)
+    .join('');
+
+  const pPath = admLinePath(produce, max, W, TOP, BOT);
+  const ePath = admLinePath(expense, max, W, TOP, BOT);
+  const area = `${pPath} L${W},${BOT} L0,${BOT} Z`;
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="admFill" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#3fb950" stop-opacity="0.26"/>
+        <stop offset="100%" stop-color="#3fb950" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    ${grid}
+    <path d="${area}" fill="url(#admFill)" stroke="none"/>
+    <path d="${ePath}" fill="none" stroke="#e8a33d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>
+    <path d="${pPath}" fill="none" stroke="#3fb950" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+  `;
+}
+
+function admRenderActivity(rows) {
+  const box = document.getElementById('adm-activity');
+  if (!box) return;
+  if (!rows || !rows.length) {
+    box.innerHTML = '<p class="adm-empty">Wala pang naitalang record ang mga farmer.</p>';
+    return;
+  }
+  const labels = { produce: 'Ani', expense: 'Gastos', income: 'Kita' };
+  box.innerHTML = rows.map(r => `
+    <div class="adm-row">
+      <span class="adm-avatar">${escapeHtml(r.avatar || '\u{1F33E}')}</span>
+      <span class="adm-row-name">${escapeHtml(r.farmer || 'Unknown')}<small>${escapeHtml(r.item || '\u2014')}</small></span>
+      <span class="adm-row-date">${escapeHtml(admShortDate(r.date))}</span>
+      <span class="adm-row-amt">${admPeso(r.amount)}</span>
+      <span class="adm-tag adm-tag--${r.type}">${labels[r.type] || 'Record'}</span>
+    </div>
+  `).join('');
+}
+
+async function renderAdminDashboard() {
+  try {
+    const res = await fetch(`/api/admin/dashboard?range=${adminRangeDays}`);
+    if (!res.ok) return;
+    const d = await res.json();
+    if (d.error) return;
+
+    const nameEl = document.getElementById('adm-greet-name');
+    if (nameEl) nameEl.textContent = currentUser || 'Admin';
+
+    const periodEl = document.getElementById('adm-period');
+    if (periodEl) {
+      periodEl.textContent = `Buod ng huling ${d.rangeDays} araw \u2022 ${admShortDate(d.periodStart)} \u2013 ${admShortDate(d.periodEnd)}`;
+    }
+
+    document.getElementById('adm-produce').textContent = admPeso(d.produceValue);
+    document.getElementById('adm-expense').textContent = admPeso(d.expenses);
+    document.getElementById('adm-net').textContent = admPeso(d.netValue);
+    document.getElementById('adm-active').textContent = d.activeFarmers;
+    document.getElementById('adm-logged').textContent = d.produceLogged;
+    document.getElementById('adm-concerns').textContent = d.openConcerns;
+
+    admSetDelta('adm-produce-delta', d.produceChange);
+    admSetDelta('adm-active-delta', d.activeFarmersChange);
+    admSetDelta('adm-logged-delta', d.produceLoggedChange);
+
+    const concernNote = document.getElementById('adm-concerns-note');
+    if (concernNote) {
+      concernNote.classList.remove('adm-delta--muted', 'adm-delta--warn');
+      if (d.openConcerns > 0) {
+        concernNote.classList.add('adm-delta--warn');
+        concernNote.textContent = 'kailangan ng sagot';
+      } else {
+        concernNote.classList.add('adm-delta--muted');
+        concernNote.textContent = `${d.totalConcerns} total \u2022 sagot na lahat`;
+      }
+    }
+
+    const farmersNote = document.getElementById('adm-farmers-note');
+    if (farmersNote) {
+      const rating = d.avgRating ? ` \u2022 \u2605 ${d.avgRating} avg rating` : '';
+      farmersNote.textContent = `${d.totalFarmers} farmer \u2022 ${d.subscribedFarmers} may bayad na session${rating}`;
+    }
+
+    const axis = d.chart || [];
+    if (axis.length) {
+      document.getElementById('adm-axis-start').textContent = admShortDate(axis[0].date);
+      document.getElementById('adm-axis-mid').textContent = admShortDate(axis[Math.floor(axis.length / 2)].date);
+      document.getElementById('adm-axis-end').textContent = admShortDate(axis[axis.length - 1].date);
+    }
+    admRenderChart(axis);
+    admRenderActivity(d.activity);
+  } catch (e) {
+    console.error('Error loading admin dashboard:', e);
+  }
+}
+
+// Range toggle (7d / 30d / 90d)
+document.querySelectorAll('.adm-range-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.adm-range-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    adminRangeDays = parseInt(btn.dataset.range, 10) || 30;
+    renderAdminDashboard();
+  });
+});
+
+const btnAdminNavDashboard = document.getElementById('btn-admin-nav-dashboard');
+if (btnAdminNavDashboard) {
+  btnAdminNavDashboard.addEventListener('click', () => {
+    document.getElementById('admin-sidebar')?.classList?.remove('open');
+    document.querySelectorAll('#admin-sidebar .nav-item').forEach(i => i.classList.remove('active'));
+    btnAdminNavDashboard.classList.add('active');
+    document.querySelectorAll('#admin-shell .main .screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-admin-dashboard')?.classList.add('active');
+    const adminTitle = document.getElementById('admin-topbar-title');
+    if (adminTitle) adminTitle.textContent = 'Dashboard';
+    renderAdminDashboard();
+  });
+}
+
 const btnAdminNavSupport = document.getElementById('btn-admin-nav-support');
 if (btnAdminNavSupport) {
   btnAdminNavSupport.addEventListener('click', () => {
     document.getElementById('admin-sidebar')?.classList?.remove('open');
     document.querySelectorAll('#admin-sidebar .nav-item').forEach(i => i.classList.remove('active'));
     btnAdminNavSupport.classList.add('active');
-    document.querySelectorAll('.main .screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('#admin-shell .main .screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-admin-support')?.classList.add('active');
     const adminTitle = document.getElementById('admin-topbar-title');
     if (adminTitle) adminTitle.textContent = 'Customer Service';
