@@ -228,20 +228,24 @@ button, input, select {
 /* SPLASH & AUTH BACKGROUND */
 .screen--splash, .screen--auth {
   min-height: 100vh;
-  width: 100vw;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: none;
   align-items: center;
   justify-content: center;
   background: #123625;
-  padding: 20px;
+  /* may extra space sa ibaba para hindi matabunan ng About Us bar */
+  padding: 76px 20px calc(88px + env(safe-area-inset-bottom, 0px));
 }
 .screen--splash.active, .screen--auth.active {
   display: flex !important;
 }
 .splash-farmbg, .auth-farmbg {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 0;
   overflow: hidden;
@@ -385,42 +389,68 @@ button, input, select {
   font-weight: 700; font-size: 13.5px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
 }
 /* ABOUT US / CONTACT US */
+/* Naka-pin sa pinakababa ng screen — labas na sa log in box */
+.screen-bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(10,32,22,0) 0%, rgba(10,32,22,0.55) 70%);
+}
+.screen-bottom-bar > * { pointer-events: auto; }
 .about-us-btn {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  max-width: 100%;
   background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.35);
+  border: 1px solid rgba(255,255,255,0.38);
   color: #fff;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
-  padding: 7px 18px;
+  letter-spacing: .02em;
+  padding: 9px 20px;
   border-radius: 999px;
   cursor: pointer;
-  transition: background .15s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
 }
-.about-us-btn:hover { background: rgba(255,255,255,0.22); }
+.about-us-btn svg { flex-shrink: 0; }
+.about-us-btn:active { transform: scale(0.97); }
+.about-us-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .about-back-btn {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  z-index: 4;
-  display: flex;
+  position: fixed;
+  top: calc(18px + env(safe-area-inset-top, 0px));
+  left: 18px;
+  z-index: 6;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.4);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
-  padding: 7px 14px;
+  padding: 9px 16px 9px 12px;
   border-radius: 999px;
   cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
 }
-.about-back-btn:hover { background: rgba(255,255,255,0.22); }
-.about-card { max-height: 80vh; overflow-y: auto; }
+.about-back-btn svg { flex-shrink: 0; transition: transform .18s ease; }
+.about-back-btn:active { transform: scale(0.96); }
+.about-back-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.about-card { width: 100%; }
 .about-title { font-family: var(--font-display); font-size: 22px; margin: 0 0 14px; color: var(--ink); text-align: center; }
 .about-text { font-size: 14px; line-height: 1.6; color: var(--ink); margin: 0 0 14px; }
 .about-contact-block { text-align: center; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
@@ -956,4 +986,113 @@ button, input, select {
   color: var(--muted);
   font-style: italic;
   letter-spacing: normal;
+}
+
+/* ==================== HOVER EFFECTS (responsive / touch-safe) ==================== */
+/* Ang lahat ng hover dito ay para lang sa mouse (desktop/laptop). Sa touch
+   screen ay hindi ito mag-a-apply para walang "stuck" na hover state. */
+@media (hover: hover) and (pointer: fine) {
+
+  /* --- Buttons --- */
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(31, 77, 54, 0.22);
+  }
+  .btn-primary:hover { background: var(--forest-light); }
+  .btn-secondary:hover { filter: brightness(1.06); box-shadow: 0 6px 16px rgba(232, 163, 61, 0.35); }
+  .btn-outline:hover { background: var(--forest-tint); border-color: var(--forest); color: var(--forest); }
+  .btn-danger:hover, .btn-remove-row:hover { filter: brightness(1.05); }
+
+  .about-us-btn:hover {
+    background: rgba(255,255,255,0.26);
+    border-color: rgba(255,255,255,0.7);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  }
+  .about-back-btn:hover {
+    background: rgba(255,255,255,0.28);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  }
+  .about-back-btn:hover svg { transform: translateX(-3px); }
+
+  .link-btn:hover,
+  .auth-switch-link:hover { color: var(--forest-light); text-decoration-thickness: 2px; }
+  .toggle-password-btn:hover { color: var(--forest); }
+  .splash-icon { transition: transform .25s ease, background .25s ease; }
+  .splash-content:hover .splash-icon { transform: translateY(-3px); background: rgba(255,255,255,0.2); }
+
+  /* --- Boxes / cards --- */
+  .auth-card {
+    transition: transform .22s ease, box-shadow .22s ease;
+  }
+  .auth-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 42px rgba(0,0,0,0.34);
+  }
+  .panel, .stat-card {
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .panel:hover, .stat-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--forest-light);
+    box-shadow: 0 10px 24px rgba(31, 77, 54, 0.16);
+  }
+  .plan-option:hover, .avatar-option:hover {
+    border-color: var(--forest);
+    box-shadow: 0 6px 16px rgba(31, 77, 54, 0.18);
+  }
+  .nav-item:hover { transform: translateX(3px); }
+
+  /* --- Inputs --- */
+  .field input:hover, .field select:hover, .field textarea:hover { border-color: var(--forest-light); }
+}
+
+/* Focus at active state — gumagana kahit saan, kasama ang touch */
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--forest);
+  box-shadow: 0 0 0 3px rgba(31, 77, 54, 0.14);
+}
+.nav-item { transition: background .15s ease, color .15s ease, transform .15s ease; }
+.plan-option { transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
+
+/* ==================== RESPONSIVE: SPLASH / AUTH / ABOUT ==================== */
+@media (max-width: 600px) {
+  .screen--splash, .screen--auth {
+    padding: 68px 14px calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+  .auth-wrap { max-width: 100%; }
+  .auth-card { padding: 20px 18px; border-radius: 14px; }
+  .splash-title { font-size: 33px; }
+  .splash-tag { margin-bottom: 30px; font-size: 13.5px; }
+  .splash-content { padding: 20px 14px; }
+  .about-back-btn {
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    left: 14px;
+    font-size: 12.5px;
+    padding: 8px 14px 8px 11px;
+  }
+  .about-us-btn { font-size: 12px; padding: 9px 16px; }
+  .screen-bottom-bar { padding: 14px 12px calc(14px + env(safe-area-inset-bottom, 0px)); }
+  .avatar-option { width: 40px; height: 40px; font-size: 18px; }
+  .avatar-picker { gap: 8px; }
+}
+@media (max-width: 360px) {
+  .about-us-btn { font-size: 11.5px; padding: 8px 14px; }
+  .about-back-btn span { display: none; }
+  .about-back-btn { padding: 9px 11px; }
+  .splash-title { font-size: 29px; }
+}
+/* Maiikling screen (hal. landscape sa phone) — huwag i-center, hayaang mag-scroll */
+@media (max-height: 640px) {
+  .screen--splash, .screen--auth { align-items: flex-start; }
+}
+/* Respeto sa reduced-motion setting ng user */
+@media (prefers-reduced-motion: reduce) {
+  .btn:hover, .about-us-btn:hover, .about-back-btn:hover,
+  .auth-card:hover, .panel:hover, .stat-card:hover, .nav-item:hover {
+    transform: none;
+  }
+  .cornfield-bg-img.pic-1.active-slide,
+  .cornfield-bg-img.pic-2.active-slide { animation: none; }
 }
