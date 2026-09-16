@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from werkzeug.middleware.proxy_fix import ProxyFix
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 # SECURITY FIX (butas na natagpuan): ang X-Forwarded-For header ay
@@ -1190,6 +1190,151 @@ def admin_reply_support_message(msg_id):
         db.session.rollback()
         print(f"Error sa admin reply: {e}")
         return jsonify({'error': 'May naganap na error sa pag-reply.'}), 500
+@app.route('/api/admin/dashboard', methods=['GET'])
+def admin_dashboard():
+    """Admin: buod ng buong sistema — kabuuang halaga ng produce, gastos,
+    net, bilang ng aktibong farmer, chart data kada araw, at pinakabagong
+    talaan mula sa lahat ng farmer.
+
+    Query param: ?range=7|30|90 (ilang araw ang saklaw, default 30).
+    Read-only ito — walang binabago sa database.
+    """
+    if not require_admin():
+        return jsonify({'error': 'Admin access only.'}), 403
+    try:
+        try:
+            days = int(request.args.get('range', 30))
+        except (TypeError, ValueError):
+            days = 30
+        if days not in (7, 30, 90):
+            days = 30
+
+        today = datetime.utcnow().date()
+        start = today - timedelta(days=days - 1)          # kasalukuyang period
+        prev_start = start - timedelta(days=days)         # nakaraang period (pang-kumpara)
+        prev_end = start - timedelta(days=1)
+
+        s_cur, s_prev, e_prev = start.isoformat(), prev_start.isoformat(), prev_end.isoformat()
+        s_today = today.isoformat()
+
+        def in_range(dstr, lo, hi):
+            return bool(dstr) and lo <= dstr <= hi
+
+        def pct(cur, prev):
+            """Porsyentong pagbabago. None kapag walang mapagbatayan (0 dati)."""
+            if prev == 0:
+                return None
+            return round(((cur - prev) / prev) * 100, 1)
+
+        records = Record.query.all()
+        incomes = ActualIncome.query.all()
+
+        produce_cur = expense_cur = 0.0
+        produce_prev = expense_prev = 0.0
+        produce_count_cur = produce_count_prev = 0
+        active_cur, active_prev = set(), set()
+        daily = {}   # 'YYYY-MM-DD' -> {'produce': x, 'expense': y}
+
+        for i in range(days):
+            daily[(start + timedelta(days=i)).isoformat()] = {'produce': 0.0, 'expense': 0.0}
+
+        for r in records:
+            amt = float(r.amount or 0)
+            if in_range(r.date, s_cur, s_today):
+                active_cur.add(r.user_id)
+                if r.type == 'produce':
+                    produce_cur += amt
+                    produce_count_cur += 1
+                    if r.date in daily:
+                        daily[r.date]['produce'] += amt
+                elif r.type == 'expense':
+                    expense_cur += amt
+                    if r.date in daily:
+                        daily[r.date]['expense'] += amt
+            elif in_range(r.date, s_prev, e_prev):
+                active_prev.add(r.user_id)
+                if r.type == 'produce':
+                    produce_prev += amt
+                    produce_count_prev += 1
+                elif r.type == 'expense':
+                    expense_prev += amt
+
+        income_cur = sum(float(i.amount or 0) for i in incomes if in_range(i.date, s_cur, s_today))
+        income_prev = sum(float(i.amount or 0) for i in incomes if in_range(i.date, s_prev, e_prev))
+
+        # --- Chart series (pataas ang petsa) ---
+        chart = [
+            {'date': d, 'produce': round(v['produce'], 2), 'expense': round(v['expense'], 2)}
+            for d, v in sorted(daily.items())
+        ]
+
+        # --- Mga bilang ---
+        total_farmers = User.query.filter_by(role='farmer').count()
+        subscribed = User.query.filter(User.role == 'farmer', User.purchased_cycles > 0).count()
+        open_concerns = SupportMessage.query.filter_by(status='open').count()
+        total_concerns = SupportMessage.query.count()
+
+        rated = [r.rating for r in records if r.rating]
+        avg_rating = round(sum(rated) / len(rated), 1) if rated else None
+
+        # --- Pinakabagong talaan mula sa lahat ng farmer ---
+        names = {u.id: (u.full_name or u.username, u.avatar) for u in User.query.all()}
+        activity = []
+        for r in sorted(records, key=lambda x: (x.date or '', x.id), reverse=True)[:12]:
+            who, av = names.get(r.user_id, ('Unknown', '🌾'))
+            activity.append({
+                'farmer': who, 'avatar': av, 'item': r.name,
+                'category': r.category or '—', 'date': r.date,
+                'amount': round(float(r.amount or 0), 2),
+                'type': 'produce' if r.type == 'produce' else 'expense',
+                'sort': (r.date or '', r.id),
+            })
+        for i in sorted(incomes, key=lambda x: (x.date or '', x.id), reverse=True)[:6]:
+            who, av = names.get(i.user_id, ('Unknown', '🌾'))
+            activity.append({
+                'farmer': who, 'avatar': av, 'item': i.product_name or 'Aktwal na kita',
+                'category': 'Benta', 'date': i.date,
+                'amount': round(float(i.amount or 0), 2),
+                'type': 'income',
+                'sort': (i.date or '', i.id),
+            })
+        activity.sort(key=lambda a: a['sort'], reverse=True)
+        for a in activity:
+            a.pop('sort', None)
+        activity = activity[:8]
+
+        net_cur = produce_cur - expense_cur
+        net_prev = produce_prev - expense_prev
+
+        return jsonify({
+            'rangeDays': days,
+            'periodStart': s_cur,
+            'periodEnd': s_today,
+            'produceValue': round(produce_cur, 2),
+            'produceChange': pct(produce_cur, produce_prev),
+            'expenses': round(expense_cur, 2),
+            'expenseChange': pct(expense_cur, expense_prev),
+            'netValue': round(net_cur, 2),
+            'netChange': pct(net_cur, net_prev),
+            'actualIncome': round(income_cur, 2),
+            'incomeChange': pct(income_cur, income_prev),
+            'activeFarmers': len(active_cur),
+            'activeFarmersChange': pct(len(active_cur), len(active_prev)),
+            'totalFarmers': total_farmers,
+            'produceLogged': produce_count_cur,
+            'produceLoggedChange': pct(produce_count_cur, produce_count_prev),
+            'subscribedFarmers': subscribed,
+            'openConcerns': open_concerns,
+            'totalConcerns': total_concerns,
+            'avgRating': avg_rating,
+            'chart': chart,
+            'activity': activity,
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error sa admin dashboard: {e}")
+        return jsonify({'error': 'May naganap na error sa dashboard.'}), 500
+
 # SECURITY FIX: dating naka-hardcode ang debug=True. Delikado ito kapag
 # na-deploy sa totoong server — bukas ang Werkzeug interactive debugger na
 # pwedeng magpatakbo ng arbitrary code kung mag-crash ang app. Ngayon,
