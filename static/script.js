@@ -1056,7 +1056,8 @@ function navigateToScreen(targetScreen) {
     'add-expense': 'Add Product & Expenses',
     'records': 'View / Search Records',
     'reports': 'Reports',
-    'support': 'Customer Service'
+    'support': 'Customer Service',
+    'subscribe': 'Subscribe'
   };
   const topbarTitle = document.getElementById('topbar-title');
   if (topbarTitle) topbarTitle.textContent = titleMap[targetScreen] || 'Dashboard';
@@ -1069,6 +1070,10 @@ function navigateToScreen(targetScreen) {
   if (targetScreen === 'records') renderRecords();
   if (targetScreen === 'reports') renderReports();
   if (targetScreen === 'support') renderMySupportMessages();
+  if (targetScreen === 'subscribe') {
+    loadGcashInfo();
+    updateSubscribeStatusText();
+  }
   if (targetScreen === 'dashboard' && pendingHarvestRatingIds.length > 0) {
     const idsToRate = pendingHarvestRatingIds;
     const nameToRate = pendingHarvestRatingName;
@@ -1215,7 +1220,7 @@ if (formActualIncome) {
   formActualIncome.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (usageStatus.locked) {
-      alert("You've used all your available sessions. Please subscribe from the Dashboard to continue.");
+      alert("You've used all your available sessions. Please subscribe from the Subscribe page to continue.");
       return;
     }
     const incInput = document.getElementById('actual-income-input');
@@ -1253,9 +1258,15 @@ if (formActualIncome) {
         await fetchUserDataFromBackend();
         if (incInput) incInput.value = '';
         // Ang harvest ay tapos na (actual income na-record) — ihanda ang
-        // rate-this-harvest popup na lalabas sa Dashboard.
-        pendingHarvestRatingIds = matchedProduceRecords.map(r => r.id);
-        pendingHarvestRatingName = productName;
+        // rate-this-harvest popup na lalabas sa Dashboard. PERO isang beses
+        // lang dapat maka-rate ang isang account, kaya kung may record na
+        // dati na may laman ang rating (ibig sabihin nakapag-rate na siya),
+        // hindi na muling ipapakita ang popup.
+        const alreadyRatedBefore = records.some(r => r.rating !== null && r.rating !== undefined);
+        if (!alreadyRatedBefore) {
+          pendingHarvestRatingIds = matchedProduceRecords.map(r => r.id);
+          pendingHarvestRatingName = productName;
+        }
         showSuccessModal('Actual Income Saved!', 'Income recorded to monitoring history.', {
           name: `Income (${productName})`,
           date: incDate,
@@ -1368,7 +1379,7 @@ if (formExpense) {
   formExpense.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (usageStatus.locked) {
-      alert("You've used all your available sessions. Please subscribe from the Dashboard to continue.");
+      alert("You've used all your available sessions. Please subscribe from the Subscribe page to continue.");
       return;
     }
     const name = document.getElementById('produce-name')?.value.trim();
@@ -1588,23 +1599,34 @@ function updateDashboard() {
   }
 }
 // ==================== SUBSCRIPTION / USAGE LIMIT ====================
+// BAGO: ang free-plan progress banner ay lumalabas lang sa Dashboard habang
+// 'free' pa ang subscriptionStatus. Sa sandaling maka-subscribe na ang user
+// (status = 'active'), nawawala na ito sa Dashboard — doon na lang sa bagong
+// "Subscribe" screen (nasa ilalim ng Customer Service sa sidebar) makikita
+// ang plan picker at GCash payment form.
+let subscribePopupShown = false;
 function updateSubscriptionUI() {
   const banner = document.getElementById('subscription-banner');
-  const freeBox = document.getElementById('subscription-banner-free');
-  const lockedBox = document.getElementById('subscription-banner-locked');
   const cycleLabel = document.getElementById('cycle-count-label');
   const totalLabel = document.getElementById('cycle-total-label');
-  if (!banner) return;
-  // Palaging ipinapakita ang banner na may progress (X / total sessions) —
-  // hindi na basta itinatago kahit "active" na ang subscriptionStatus, dahil
-  // may hangganan pa rin ang bawat plan (hal. naubos ang 4 o 21 sessions,
-  // babalik sa locked state ulit at kailangan bumili ulit).
-  banner.style.display = 'block';
+  if (banner) {
+    banner.style.display = usageStatus.subscriptionStatus === 'free' ? 'block' : 'none';
+  }
   if (cycleLabel) cycleLabel.textContent = usageStatus.cycleCount;
   if (totalLabel) totalLabel.textContent = usageStatus.totalAllowed;
-  if (freeBox) freeBox.style.display = usageStatus.locked ? 'none' : 'block';
-  if (lockedBox) lockedBox.style.display = usageStatus.locked ? 'block' : 'none';
-  if (usageStatus.locked) loadGcashInfo();
+  updateSubscribeStatusText();
+  // Kapag naubos na ang mga sessions (free trial man o binayarang plan),
+  // awtomatikong lumalabas ang popup para pumili ng plan — isang beses lang
+  // kada "lock event" (hindi paulit-ulit kada fetch).
+  if (usageStatus.locked) {
+    loadGcashInfo();
+    if (!subscribePopupShown) {
+      subscribePopupShown = true;
+      document.getElementById('subscribe-choice-backdrop')?.classList?.add('active');
+    }
+  } else {
+    subscribePopupShown = false;
+  }
   // Lock the add-forms once the free/purchased sessions are used up
   ['form-expense', 'form-actual-income'].forEach(id => {
     const form = document.getElementById(id);
@@ -1619,6 +1641,41 @@ function updateSubscriptionUI() {
     }
   });
 }
+// Status text na ipinapakita sa itaas ng "Subscribe" screen.
+function updateSubscribeStatusText() {
+  const el = document.getElementById('subscribe-status-text');
+  if (!el) return;
+  if (usageStatus.subscriptionStatus === 'active') {
+    const remaining = Math.max(0, usageStatus.totalAllowed - usageStatus.cycleCount);
+    el.textContent = usageStatus.locked
+      ? `Naubos na ang mga sessions mo (${usageStatus.cycleCount} / ${usageStatus.totalAllowed} nagamit na). Pumili ng plan sa ibaba para magdagdag ng sessions.`
+      : `Aktibo ang subscription mo — ${remaining} session(s) pa ang natitira (${usageStatus.cycleCount} / ${usageStatus.totalAllowed} nagamit na).`;
+  } else {
+    el.textContent = `Free trial — ${usageStatus.cycleCount} / ${usageStatus.totalAllowed} sessions ginamit na.` +
+      (usageStatus.locked ? ' Naubos na ang free sessions — pumili ng plan sa ibaba para magpatuloy.' : '');
+  }
+}
+const btnSubscribeChoiceClose = document.getElementById('btn-subscribe-choice-close');
+if (btnSubscribeChoiceClose) {
+  btnSubscribeChoiceClose.addEventListener('click', () => {
+    document.getElementById('subscribe-choice-backdrop')?.classList?.remove('active');
+  });
+}
+// Ang mga plan button sa popup ay hindi direktang nagbabayad — dinadala nila
+// ang user sa Subscribe screen at pinipili doon ang parehong plan, para
+// iisa lang ang GCash payment form sa buong app.
+document.querySelectorAll('#subscribe-choice-plans .plan-option').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('subscribe-choice-backdrop')?.classList?.remove('active');
+    const plan = btn.dataset.plan;
+    navigateToScreen('subscribe');
+    const target = document.querySelector(`#plan-picker .plan-option[data-plan="${plan}"]`);
+    if (target) {
+      target.click();
+      setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+    }
+  });
+});
 let gcashInfoLoaded = false;
 async function loadGcashInfo() {
   if (gcashInfoLoaded) return;
@@ -1649,9 +1706,9 @@ async function loadGcashInfo() {
     console.error('Error loading GCash info:', e);
   }
 }
-document.querySelectorAll('.plan-option').forEach(btn => {
+document.querySelectorAll('#plan-picker .plan-option').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.plan-option').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('#plan-picker .plan-option').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     selectedPlan = btn.dataset.plan;
     const amountLabel = document.getElementById('gcash-selected-amount');
@@ -1938,7 +1995,7 @@ if (formPdAddExpense) {
       return;
     }
     if (usageStatus.locked) {
-      alert("You've used all your available sessions. Please subscribe from the Dashboard to continue.");
+      alert("You've used all your available sessions. Please subscribe from the Subscribe page to continue.");
       return;
     }
     const category = document.getElementById('pd-expense-category')?.value || 'Fertilizer';
