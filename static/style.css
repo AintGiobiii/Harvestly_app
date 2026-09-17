@@ -1098,39 +1098,32 @@ button, input, select {
 }
 
 /* ==================================================================
-   ADMIN DASHBOARD — dark theme (Harvestly)
-   Naka-scope lahat sa .admin-shell kaya hindi maaapektuhan ang
-   farmer app shell na light theme pa rin.
+   ADMIN DASHBOARD — green theme (Harvestly), tugma sa farmer app
+   Naka-scope lahat sa .admin-shell. Dark forest-green + gold ang
+   sidebar (kapareho ng farmer sidebar), habang light/paper naman
+   ang content area — kapareho ng dating "green UI".
    ================================================================== */
 .admin-shell {
-  --adm-bg: #0d1117;
-  --adm-panel: #151b23;
-  --adm-panel-2: #1b222c;
-  --adm-line: #252d38;
-  --adm-text: #e8edf3;
-  --adm-muted: #8b95a5;
-  --adm-green: #3fb950;
-  --adm-green-soft: rgba(63, 185, 80, 0.14);
-  --adm-gold: #e8a33d;
-  --adm-red: #f0603f;
+  --adm-bg: #F7F7F2;
+  --adm-panel: #FFFFFF;
+  --adm-panel-2: #E7EFE9;
+  --adm-line: #E1E0D6;
+  --adm-text: #22291F;
+  --adm-muted: #6B7266;
+  --adm-green: #1F4D36;
+  --adm-green-soft: #E7EFE9;
+  --adm-gold: #E8A33D;
+  --adm-red: #B4432F;
   background: var(--adm-bg);
   color: var(--adm-text);
 }
 
-/* --- Sidebar --- */
-.admin-shell .sidebar {
-  background: var(--adm-bg);
-  border-right: 1px solid var(--adm-line);
-  color: var(--adm-muted);
-}
-.admin-shell .sidebar-brand span { color: var(--adm-text); font-size: 17px; }
-.admin-shell .nav-item { color: var(--adm-muted); border-radius: 10px; }
-.admin-shell .nav-item.active {
-  background: var(--adm-panel-2);
-  color: var(--adm-text);
-  box-shadow: inset 2px 0 0 var(--adm-green);
-}
-.admin-shell .nav-item--logout { border-top-color: var(--adm-line); }
+/* --- Sidebar: sinasadyang HINDI in-override ang background/color dito —
+   gamitin ang parehong dark forest-green + gold na style ng base .sidebar /
+   .nav-item / .sidebar-brand (tingnan sa itaas), para eksaktong magkatulad
+   ang admin at farmer sidebar. --- */
+.admin-shell .sidebar-brand span { font-size: 17px; }
+.admin-shell .nav-item { border-radius: 10px; }
 
 /* --- Topbar --- */
 .admin-shell .topbar {
@@ -1138,23 +1131,23 @@ button, input, select {
   border-bottom: 1px solid var(--adm-line);
 }
 .admin-shell .topbar h1 { color: var(--adm-text); }
-.admin-shell .menu-toggle { color: var(--adm-muted); }
+.admin-shell .menu-toggle { color: var(--adm-green); }
 .admin-shell .topbar-user { color: var(--adm-muted); }
-.admin-shell .topbar-user span { background: var(--adm-panel-2); color: var(--adm-text); }
+.admin-shell .topbar-user span { background: var(--adm-panel-2); color: var(--adm-green); }
 .admin-shell .main { background: var(--adm-bg); }
 .admin-shell .lede { color: var(--adm-muted); }
 
-/* --- Panels sa Customer Service screen (para tugma sa dark) --- */
+/* --- Panels sa Customer Service screen --- */
 .admin-shell .panel {
   background: var(--adm-panel);
   border-color: var(--adm-line);
-  box-shadow: none;
+  box-shadow: var(--shadow);
   color: var(--adm-text);
 }
 .admin-shell .panel h2 { color: var(--adm-text); }
 .admin-shell .support-card { border-color: var(--adm-line); background: var(--adm-panel-2); }
 .admin-shell textarea, .admin-shell input, .admin-shell select {
-  background: var(--adm-panel-2); border-color: var(--adm-line); color: var(--adm-text);
+  background: #fff; border-color: var(--adm-line); color: var(--adm-text);
 }
 
 /* --- Greeting --- */
@@ -1172,6 +1165,7 @@ button, input, select {
   border: 1px solid var(--adm-line);
   border-radius: 14px;
   padding: 20px;
+  box-shadow: var(--shadow);
   transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
 .adm-label {
@@ -1191,7 +1185,7 @@ button, input, select {
   margin: 8px 0 10px;
   font-family: var(--font-display);
   font-size: clamp(30px, 5vw, 44px);
-  font-weight: 700; line-height: 1.05; color: #fff;
+  font-weight: 700; line-height: 1.05; color: var(--adm-green);
   letter-spacing: -0.02em;
   word-break: break-word;
 }
@@ -1211,7 +1205,7 @@ button, input, select {
 }
 .adm-mini-num {
   margin: 6px 0 0; font-family: var(--font-display);
-  font-size: 25px; font-weight: 700; color: #fff;
+  font-size: 25px; font-weight: 700; color: var(--adm-text);
 }
 
 /* --- Delta pill (hal. +12.5%) --- */
@@ -1242,7 +1236,7 @@ button, input, select {
   font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 7px;
   transition: background .15s ease, color .15s ease;
 }
-.adm-range-btn.active { background: #2b333f; color: var(--adm-text); }
+.adm-range-btn.active { background: var(--adm-green); color: #fff; }
 .adm-legend { display: flex; gap: 16px; margin: 12px 0 6px; }
 .adm-leg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--adm-muted); }
 .adm-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
@@ -1296,11 +1290,9 @@ button, input, select {
 @media (hover: hover) and (pointer: fine) {
   .adm-card:hover {
     transform: translateY(-3px);
-    border-color: #39414d;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+    border-color: var(--adm-green);
+    box-shadow: 0 12px 28px rgba(31, 77, 54, 0.14);
   }
-  .admin-shell .nav-item:hover { background: var(--adm-panel-2); color: var(--adm-text); }
-  .admin-shell .nav-item--logout:hover { background: rgba(240, 96, 63, 0.16); color: #ff9c86; }
   .adm-range-btn:hover { color: var(--adm-text); }
   .adm-row:hover { background: var(--adm-panel-2); border-radius: 8px; }
 }
