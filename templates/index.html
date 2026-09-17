@@ -91,6 +91,35 @@
       </div>
     </div>
   </div>
+  <!-- SUBSCRIBE CHOICE POPUP (auto-shows kapag naubos na ang sessions) -->
+  <div id="subscribe-choice-backdrop" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="success-icon-wrap">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.2-5.4 3.2 1.3-6-4.6-4.1 6.1-.6z"/>
+        </svg>
+      </div>
+      <h2 class="modal-title">Naubos na ang Sessions Mo</h2>
+      <p class="modal-sub">Pumili ng plan para magpatuloy sa pag-record ng mga ani, gastos, at kita.</p>
+      <div class="plan-picker" id="subscribe-choice-plans">
+        <button type="button" class="plan-option" data-plan="starter" data-price="100" data-sessions="5">
+          <span class="plan-option-price">₱100</span>
+          <span class="plan-option-sessions">5 sessions</span>
+        </button>
+        <button type="button" class="plan-option" data-plan="basic" data-price="300" data-sessions="17">
+          <span class="plan-option-price">₱300</span>
+          <span class="plan-option-sessions">17 sessions</span>
+        </button>
+        <button type="button" class="plan-option" data-plan="pro" data-price="500" data-sessions="28">
+          <span class="plan-option-price">₱500</span>
+          <span class="plan-option-sessions">28 sessions</span>
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btn-subscribe-choice-close" class="btn btn-secondary btn-block">Mamaya na lang</button>
+      </div>
+    </div>
+  </div>
   <!-- PRODUCE VIEW DETAILS MODAL (countdown + linked expenses) -->
   <div id="produce-detail-backdrop" class="modal-backdrop">
     <div class="modal-card produce-detail-card">
@@ -444,6 +473,10 @@
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
           Customer Service
         </button>
+        <button type="button" class="nav-item" data-screen="subscribe">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.2-5.4 3.2 1.3-6-4.6-4.1 6.1-.6z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+          Subscribe
+        </button>
       </nav>
       <button id="btn-logout" type="button" class="nav-item nav-item--logout">
         <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></span>
@@ -490,33 +523,7 @@
           <div id="subscription-banner-free">
             <p class="subscription-banner-title">Free plan — <span id="cycle-count-label">0</span> / <span id="cycle-total-label">3</span> sessions used</p>
             <p class="subscription-banner-sub">A session is 1 product + its expenses + its actual income. Once used up, adding new records will be locked until you subscribe.</p>
-          </div>
-          <div id="subscription-banner-locked" style="display: none;">
-            <p class="subscription-banner-title">Naubos na ang free sessions mo</p>
-            <p class="subscription-banner-sub">Nandito pa rin ang datos mo, pero naka-lock muna ang pagdagdag ng bagong record. Pumili ng plan sa ibaba — agad kang makakapagpatuloy pagkatapos mong i-GCash at ilagay ang reference number.</p>
-            <div class="plan-picker" id="plan-picker">
-              <button type="button" class="plan-option" data-plan="basic" data-price="100" data-sessions="4">
-                <span class="plan-option-price">₱100</span>
-                <span class="plan-option-sessions">4 sessions</span>
-              </button>
-              <button type="button" class="plan-option" data-plan="pro" data-price="500" data-sessions="21">
-                <span class="plan-option-price">₱500</span>
-                <span class="plan-option-sessions">21 sessions</span>
-              </button>
-            </div>
-            <div id="gcash-payment-box" style="display: none; margin-top: 12px;">
-              <p class="subscription-banner-sub">I-GCash ang <strong id="gcash-selected-amount">₱0</strong> sa:</p>
-              <p class="gcash-info-line"><strong id="gcash-display-name">—</strong> — <span id="gcash-display-number">—</span></p>
-              <div class="gcash-qr-wrap" id="gcash-qr-wrap" style="display: none;">
-                <img src="{{ url_for('static', filename='gcash-qr.png') }}" alt="GCash QR Code" id="gcash-qr-img" class="gcash-qr-img">
-                <p class="pricing-guide-note" style="text-align: center;">O i-scan ang QR gamit ang GCash app mo</p>
-              </div>
-              <label class="field" style="margin-top: 10px;">
-                <span>GCash Reference Number</span>
-                <input type="text" id="subscription-payment-ref" placeholder="e.g. 1234567890123">
-              </label>
-              <button type="button" id="btn-request-subscription" class="btn btn-primary">Subscribe Now</button>
-            </div>
+            <button type="button" class="btn btn-primary" data-screen="subscribe">Tingnan ang mga Plan</button>
           </div>
         </div>
         <div class="panel" id="dashboard-latest-computation-panel" style="display: none;">
@@ -822,6 +829,49 @@
             <h2>Your concerns</h2>
           </div>
           <div id="support-list"></div>
+        </div>
+      </section>
+      <!-- SUBSCRIBE SCREEN -->
+      <section id="screen-subscribe" class="screen">
+        <p class="lede">Mag-subscribe para magpatuloy sa pag-record ng mga ani, gastos, at kita kapag naubos na ang free trial sessions mo.</p>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Kasalukuyang Plan</h2>
+          </div>
+          <p class="subscription-banner-sub" id="subscribe-status-text">-</p>
+        </div>
+        <div class="panel" style="margin-top: 20px;">
+          <div class="panel-head">
+            <h2>Presyo per Session</h2>
+          </div>
+          <p class="subscription-banner-sub">Ang isang session ay 1 produkto + mga gastos nito + aktwal na kita nito. Pumili ng plan sa ibaba, i-GCash ang halaga, at ilagay ang reference number para direktang maidagdag ang mga sessions sa account mo.</p>
+          <div class="plan-picker" id="plan-picker">
+            <button type="button" class="plan-option" data-plan="starter" data-price="100" data-sessions="5">
+              <span class="plan-option-price">₱100</span>
+              <span class="plan-option-sessions">5 sessions</span>
+            </button>
+            <button type="button" class="plan-option" data-plan="basic" data-price="300" data-sessions="17">
+              <span class="plan-option-price">₱300</span>
+              <span class="plan-option-sessions">17 sessions</span>
+            </button>
+            <button type="button" class="plan-option" data-plan="pro" data-price="500" data-sessions="28">
+              <span class="plan-option-price">₱500</span>
+              <span class="plan-option-sessions">28 sessions</span>
+            </button>
+          </div>
+          <div id="gcash-payment-box" style="display: none; margin-top: 12px;">
+            <p class="subscription-banner-sub">I-GCash ang <strong id="gcash-selected-amount">₱0</strong> sa:</p>
+            <p class="gcash-info-line"><strong id="gcash-display-name">—</strong> — <span id="gcash-display-number">—</span></p>
+            <div class="gcash-qr-wrap" id="gcash-qr-wrap" style="display: none;">
+              <img src="{{ url_for('static', filename='gcash-qr.png') }}" alt="GCash QR Code" id="gcash-qr-img" class="gcash-qr-img">
+              <p class="pricing-guide-note" style="text-align: center;">O i-scan ang QR gamit ang GCash app mo</p>
+            </div>
+            <label class="field" style="margin-top: 10px;">
+              <span>GCash Reference Number</span>
+              <input type="text" id="subscription-payment-ref" placeholder="e.g. 1234567890123">
+            </label>
+            <button type="button" id="btn-request-subscription" class="btn btn-primary">Subscribe Now</button>
+          </div>
         </div>
       </section>
     </main>
