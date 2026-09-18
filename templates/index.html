@@ -102,17 +102,17 @@
       <h2 class="modal-title">Naubos na ang Sessions Mo</h2>
       <p class="modal-sub">Pumili ng plan para magpatuloy sa pag-record ng mga ani, gastos, at kita.</p>
       <div class="plan-picker" id="subscribe-choice-plans">
-        <button type="button" class="plan-option" data-plan="starter" data-price="100" data-sessions="5">
-          <span class="plan-option-price">₱100</span>
-          <span class="plan-option-sessions">5 sessions</span>
+        <button type="button" class="plan-option" data-plan="starter" data-price="30" data-sessions="4">
+          <span class="plan-option-price">₱30</span>
+          <span class="plan-option-sessions">4 sessions</span>
         </button>
-        <button type="button" class="plan-option" data-plan="basic" data-price="300" data-sessions="17">
-          <span class="plan-option-price">₱300</span>
-          <span class="plan-option-sessions">17 sessions</span>
+        <button type="button" class="plan-option" data-plan="basic" data-price="80" data-sessions="10">
+          <span class="plan-option-price">₱80</span>
+          <span class="plan-option-sessions">10 sessions</span>
         </button>
-        <button type="button" class="plan-option" data-plan="pro" data-price="500" data-sessions="28">
-          <span class="plan-option-price">₱500</span>
-          <span class="plan-option-sessions">28 sessions</span>
+        <button type="button" class="plan-option" data-plan="pro" data-price="150" data-sessions="20">
+          <span class="plan-option-price">₱150</span>
+          <span class="plan-option-sessions">20 sessions</span>
         </button>
       </div>
       <div class="modal-actions">
@@ -436,6 +436,23 @@
       </button>
     </div>
   </section>
+  <!-- ONBOARDING TUTORIAL (lalabas lang isang beses, pagkatapos mag-register) -->
+  <div id="tutorial-overlay" class="tutorial-overlay">
+    <div class="tutorial-card">
+      <div class="tutorial-head">
+        <span class="tutorial-step-badge"><span id="tut-step-num">1</span>/<span id="tut-step-total">7</span></span>
+        <button type="button" id="btn-tutorial-skip" class="tutorial-skip-btn" disabled>I-skip <span id="tut-skip-timer">(5)</span></button>
+      </div>
+      <div class="tutorial-icon" id="tut-icon" aria-hidden="true"></div>
+      <h2 class="tutorial-title" id="tut-title">Dashboard</h2>
+      <p class="tutorial-body" id="tut-body">-</p>
+      <div class="tutorial-dots" id="tut-dots"></div>
+      <div class="tutorial-actions">
+        <button type="button" id="btn-tutorial-back" class="btn btn-outline">Bumalik</button>
+        <button type="button" id="btn-tutorial-next" class="btn btn-primary">Susunod</button>
+      </div>
+    </div>
+  </div>
   <!-- MAIN APP SHELL -->
   <div id="app-shell" class="app-shell">
     <aside class="sidebar" id="sidebar">
@@ -846,17 +863,17 @@
           </div>
           <p class="subscription-banner-sub">Ang isang session ay 1 produkto + mga gastos nito + aktwal na kita nito. Pumili ng plan sa ibaba, i-GCash ang halaga, at ilagay ang reference number para direktang maidagdag ang mga sessions sa account mo.</p>
           <div class="plan-picker" id="plan-picker">
-            <button type="button" class="plan-option" data-plan="starter" data-price="100" data-sessions="5">
-              <span class="plan-option-price">₱100</span>
-              <span class="plan-option-sessions">5 sessions</span>
+            <button type="button" class="plan-option" data-plan="starter" data-price="30" data-sessions="4">
+              <span class="plan-option-price">₱30</span>
+              <span class="plan-option-sessions">4 sessions</span>
             </button>
-            <button type="button" class="plan-option" data-plan="basic" data-price="300" data-sessions="17">
-              <span class="plan-option-price">₱300</span>
-              <span class="plan-option-sessions">17 sessions</span>
+            <button type="button" class="plan-option" data-plan="basic" data-price="80" data-sessions="10">
+              <span class="plan-option-price">₱80</span>
+              <span class="plan-option-sessions">10 sessions</span>
             </button>
-            <button type="button" class="plan-option" data-plan="pro" data-price="500" data-sessions="28">
-              <span class="plan-option-price">₱500</span>
-              <span class="plan-option-sessions">28 sessions</span>
+            <button type="button" class="plan-option" data-plan="pro" data-price="150" data-sessions="20">
+              <span class="plan-option-price">₱150</span>
+              <span class="plan-option-sessions">20 sessions</span>
             </button>
           </div>
           <div id="gcash-payment-box" style="display: none; margin-top: 12px;">
