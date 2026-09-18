@@ -64,9 +64,9 @@ FREE_CYCLE_LIMIT = 3
 # audit trail ang admin kung kailanganin niya itong i-cross-check sa sarili
 # niyang GCash records pagkatapos.
 SESSION_PLANS = {
-    'starter': {'price': 100, 'sessions': 5},
-    'basic': {'price': 300, 'sessions': 17},
-    'pro': {'price': 500, 'sessions': 28},
+    'starter': {'price': 30, 'sessions': 4},
+    'basic': {'price': 80, 'sessions': 10},
+    'pro': {'price': 150, 'sessions': 20},
 }
 # I-set ang mga env var na ito (sa Render: Environment tab) para lumabas ang
 # tamang GCash number/pangalan sa payment screen ng mga farmer.
