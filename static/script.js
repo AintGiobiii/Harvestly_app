@@ -332,7 +332,145 @@ if (formSignup) {
   });
 }
 // ==================== EMAIL VERIFICATION ====================
-async function enterAppAfterAuth(data) {
+// ==================== ONBOARDING TUTORIAL ====================
+// Lalabas lang ito nang isang beses, kaagad pagkatapos matagumpay na
+// mag-verify ang isang bagong account (tingnan ang tawag sa
+// startOnboardingTutorial() sa loob ng form-verify submit handler sa
+// itaas). Hindi ito lumalabas sa ordinaryong pag-login o session
+// restore. Kada hakbang, dinadala rin nito ang user sa aktwal na
+// screen na inilalarawan, may dim overlay lang sa ibabaw, kaya
+// nakikita pa rin ang tunay na dashboard/form/report sa likod.
+const TUTORIAL_STEPS = [
+  {
+    screen: 'dashboard',
+    title: 'Dashboard',
+    body: 'Dito mo makikita ang buod ng iyong ani: Expected Sales, Actual Income, Total Expenses, at Net Profit. May mabilisang buttons din dito para diretsong makapagdagdag ng produkto o ng aktwal na kita.',
+    icon: '<rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="3" width="8" height="5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="10" width="8" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="13" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>'
+  },
+  {
+    screen: 'add-expense',
+    title: 'Add Expenses',
+    body: 'Dito mo itatala ang bagong produce/ani mo kasama ang mga gastos na ginamit — hal. binhi, abono, o labor. Ang bawat produkto na naitala dito ay maaari mong i-link sa mga gastos nito.',
+    icon: '<path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+  },
+  {
+    screen: 'actual-income',
+    title: 'Add Income',
+    body: 'Kapag nabenta na ang ani mo, dito mo ilalagay ang aktwal na natanggap mong kita. Awtomatiko itong ikukumpara sa computed/expected na kita batay sa mga naitala mong produkto at gastos.',
+    icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+  },
+  {
+    screen: 'records',
+    title: 'View / Search Records',
+    body: 'Kumpletong listahan ito ng lahat ng naitala mong produkto at gastos. Gamitin ang search para mabilis mahanap ang isang partikular na record.',
+    icon: '<circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+  },
+  {
+    screen: 'reports',
+    title: 'Reports',
+    body: 'Makikita dito ang buwanang buod ng benta, gastos, at kita, kasama ang breakdown per kategorya at per produkto — plus graph para mas madaling makita ang trend.',
+    icon: '<path d="M4 20V10M11 20V4M18 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+  },
+  {
+    screen: 'support',
+    title: 'Customer Service',
+    body: 'May tanong o concern ka ba tungkol sa app o account mo? Ipadala dito ang mensahe mo — makikita ito ng admin at makikita mo rin dito ang sagot nila.',
+    icon: '<path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+  },
+  {
+    screen: 'subscribe',
+    title: 'Subscribe',
+    body: 'May 3 libreng sessions ka sa simula. Kapag naubos na ito, dito ka pipili ng plan at magbabayad via GCash para magpatuloy sa pagdagdag ng records.',
+    icon: '<path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.2-5.4 3.2 1.3-6-4.6-4.1 6.1-.6z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+  }
+];
+let tutStepIndex = 0;
+let tutSkipTimer = null;
+
+function tutClearNavHighlight() {
+  document.querySelectorAll('.sidebar-nav .nav-item.tut-highlight').forEach(el => el.classList.remove('tut-highlight'));
+}
+
+function tutRenderStep() {
+  const step = TUTORIAL_STEPS[tutStepIndex];
+  if (!step) return;
+  navigateToScreen(step.screen);
+  tutClearNavHighlight();
+  const navBtn = document.querySelector(`.sidebar-nav [data-screen="${step.screen}"]`);
+  if (navBtn) navBtn.classList.add('tut-highlight');
+
+  document.getElementById('tut-step-num').textContent = tutStepIndex + 1;
+  document.getElementById('tut-step-total').textContent = TUTORIAL_STEPS.length;
+  document.getElementById('tut-title').textContent = step.title;
+  document.getElementById('tut-body').textContent = step.body;
+  const iconBox = document.getElementById('tut-icon');
+  if (iconBox) iconBox.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24">${step.icon}</svg>`;
+
+  const dots = document.getElementById('tut-dots');
+  if (dots) {
+    dots.innerHTML = TUTORIAL_STEPS.map((_, i) => `<span class="${i === tutStepIndex ? 'active' : ''}"></span>`).join('');
+  }
+
+  const backBtn = document.getElementById('btn-tutorial-back');
+  if (backBtn) backBtn.hidden = tutStepIndex === 0;
+  const nextBtn = document.getElementById('btn-tutorial-next');
+  if (nextBtn) nextBtn.textContent = (tutStepIndex === TUTORIAL_STEPS.length - 1) ? 'Tapusin' : 'Susunod';
+
+  // 5-segundong countdown bago maging click-able ang "I-skip" — bawat
+  // hakbang, nagre-reset ito para makita muna nang kaunti ang bawat screen.
+  const skipBtn = document.getElementById('btn-tutorial-skip');
+  const skipTimerLabel = document.getElementById('tut-skip-timer');
+  if (tutSkipTimer) clearInterval(tutSkipTimer);
+  let secondsLeft = 5;
+  if (skipBtn) skipBtn.disabled = true;
+  if (skipTimerLabel) skipTimerLabel.textContent = `(${secondsLeft})`;
+  tutSkipTimer = setInterval(() => {
+    secondsLeft -= 1;
+    if (secondsLeft <= 0) {
+      clearInterval(tutSkipTimer);
+      tutSkipTimer = null;
+      if (skipBtn) skipBtn.disabled = false;
+      if (skipTimerLabel) skipTimerLabel.textContent = '';
+    } else if (skipTimerLabel) {
+      skipTimerLabel.textContent = `(${secondsLeft})`;
+    }
+  }, 1000);
+}
+
+function startOnboardingTutorial() {
+  const overlay = document.getElementById('tutorial-overlay');
+  if (!overlay) return;
+  tutStepIndex = 0;
+  overlay.classList.add('active');
+  tutRenderStep();
+}
+
+function closeOnboardingTutorial() {
+  if (tutSkipTimer) { clearInterval(tutSkipTimer); tutSkipTimer = null; }
+  tutClearNavHighlight();
+  document.getElementById('tutorial-overlay')?.classList?.remove('active');
+  navigateToScreen('dashboard');
+}
+
+document.getElementById('btn-tutorial-next')?.addEventListener('click', () => {
+  if (tutStepIndex >= TUTORIAL_STEPS.length - 1) {
+    closeOnboardingTutorial();
+    return;
+  }
+  tutStepIndex += 1;
+  tutRenderStep();
+});
+document.getElementById('btn-tutorial-back')?.addEventListener('click', () => {
+  if (tutStepIndex <= 0) return;
+  tutStepIndex -= 1;
+  tutRenderStep();
+});
+document.getElementById('btn-tutorial-skip')?.addEventListener('click', () => {
+  closeOnboardingTutorial();
+});
+
+async function enterAppAfterAuth(data, opts) {
+  opts = opts || {};
   currentUser = data.username;
   currentRole = data.role || 'farmer';
   currentAvatar = data.avatar || '🌾';
@@ -349,6 +487,7 @@ async function enterAppAfterAuth(data) {
   if (topbarAvatar) topbarAvatar.textContent = currentAvatar;
   initApp();
   await fetchUserDataFromBackend();
+  if (opts.showTutorial) startOnboardingTutorial();
 }
 // BAGO: "stay logged in" check. Tinatawag ito sa unang pag-load ng page
 // (tingnan ang pagtawag dito sa ibaba) para malaman kung may valid session
@@ -391,7 +530,7 @@ if (formVerify) {
       if (response.ok) {
         if (err) err.hidden = true;
         if (info) info.hidden = true;
-        await enterAppAfterAuth(data);
+        await enterAppAfterAuth(data, { showTutorial: true });
       } else {
         if (info) info.hidden = true;
         if (err) { err.textContent = data.error || 'Hindi na-verify ang email.'; err.hidden = false; }
