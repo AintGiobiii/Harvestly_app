@@ -43,17 +43,6 @@ if _database_url.startswith('postgres://'):
     _database_url = _database_url.replace('postgres://', 'postgresql://', 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = _database_url or 'sqlite:///harvestly.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# FIX (SSL connection closed unexpectedly): sa serverless (Vercel), bawat
-# function invocation ay maaaring gumamit ng "stale" na naka-cache na
-# database connection na na-timeout/na-close na pala sa Neon side (lalo na
-# sa free tier na may auto-suspend). pool_pre_ping ang nagche-check muna
-# kung buhay pa ang connection bago ito gamitin — kung patay na, gagawa ito
-# ng bago imbes na mag-error. pool_recycle naman ang nagsisiguro na hindi
-# na-hahawakan nang matagal ang isang connection nang walang ginagawa.
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_pre_ping': True,
-    'pool_recycle': 280,
-}
 
 # SECURITY FIX: mas ligtas na session cookie settings.
 # I-set ang FLASK_ENV=production (o HTTPS_ENABLED=1) sa environment kapag
@@ -96,32 +85,34 @@ ADMIN_GCASH_NAME = os.environ.get('ADMIN_GCASH_NAME', 'Mhar Angelo')
 # environment variables. Kung wala ang mga ito, hindi talaga magpapadala ng
 # email ang app — magpi-print na lang ito sa console (useful habang
 # nagte-test lokal) para hindi bumagsak ang buong request.
-app.config['BREVO_API_KEY'] = os.environ.get('BREVO_API_KEY', '')
-app.config['BREVO_SENDER_EMAIL'] = os.environ.get('BREVO_SENDER_EMAIL', '')
-app.config['BREVO_SENDER_NAME'] = os.environ.get('BREVO_SENDER_NAME', 'Harvestly')
+# Resend na ang gamit (Setyembre 2026) sa halip na Brevo.
+app.config['RESEND_API_KEY'] = os.environ.get('RESEND_API_KEY', '')
+app.config['RESEND_SENDER_EMAIL'] = os.environ.get('RESEND_SENDER_EMAIL', 'onboarding@resend.dev')
+app.config['RESEND_SENDER_NAME'] = os.environ.get('RESEND_SENDER_NAME', 'Harvestly')
 VERIFICATION_CODE_TTL_MINUTES = 15
 RESET_CODE_TTL_MINUTES = 15
 CODE_RESEND_COOLDOWN_SECONDS = 60
 
 def send_email(to_email, subject, body_html, body_text=None):
-    api_key = app.config.get('BREVO_API_KEY')
-    sender_email = app.config.get('BREVO_SENDER_EMAIL')
+    api_key = app.config.get('RESEND_API_KEY')
+    sender_email = app.config.get('RESEND_SENDER_EMAIL')
     if not api_key or not sender_email:
-        print(f"[EMAIL DISABLED — walang BREVO_API_KEY/BREVO_SENDER_EMAIL env var] Hindi naipadala ang '{subject}' papunta sa {to_email}.")
+        print(f"[EMAIL DISABLED — walang RESEND_API_KEY/RESEND_SENDER_EMAIL env var] Hindi naipadala ang '{subject}' papunta sa {to_email}.")
         return False
     try:
+        sender_name = app.config.get('RESEND_SENDER_NAME', 'Harvestly')
         payload = {
-            'sender': {'name': app.config.get('BREVO_SENDER_NAME', 'Harvestly'), 'email': sender_email},
-            'to': [{'email': to_email}],
+            'from': f'{sender_name} <{sender_email}>',
+            'to': [to_email],
             'subject': subject,
-            'htmlContent': body_html
+            'html': body_html,
         }
         if body_text:
-            payload['textContent'] = body_text
+            payload['text'] = body_text
         resp = requests.post(
-            'https://api.brevo.com/v3/smtp/email',
+            'https://api.resend.com/emails',
             json=payload,
-            headers={'accept': 'application/json', 'api-key': api_key, 'content-type': 'application/json'},
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
             timeout=15
         )
         if resp.status_code >= 400:
