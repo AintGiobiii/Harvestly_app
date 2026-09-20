@@ -140,16 +140,20 @@ def is_code_expired(expiry_str):
 # "resend code" / "forgot password" requests. Katulad ng _login_attempts
 # sa baba — in-memory lang, nare-reset sa restart, sapat na para sa
 # basic deployment.
-_code_send_times = {}
-
 def can_send_code(key):
-    last = _code_send_times.get(key)
-    if last and (time.time() - last) < CODE_RESEND_COOLDOWN_SECONDS:
+    row = RateLimitEntry.query.filter_by(key=f'code_send:{key}').first()
+    if row and (time.time() - row.last_at) < CODE_RESEND_COOLDOWN_SECONDS:
         return False
     return True
 
 def mark_code_sent(key):
-    _code_send_times[key] = time.time()
+    now = time.time()
+    row = RateLimitEntry.query.filter_by(key=f'code_send:{key}').first()
+    if row:
+        row.last_at = now
+    else:
+        db.session.add(RateLimitEntry(key=f'code_send:{key}', count=0, first_at=now, last_at=now))
+    db.session.commit()
 
 # SECURITY FIX (butas na natagpuan): dating WALANG limitasyon sa bilang ng
 # maling pagsubok (guesses) sa /api/verify-email at /api/reset-password —
@@ -157,20 +161,28 @@ def mark_code_sent(key):
 # i-brute-force ito ng attacker sa loob ng ilang minuto (lalo na ang
 # reset-password, na kayang magbigay ng BUONG account takeover — kahit hindi
 # alam ng attacker ang tunay na password, basta malaman lang niya ang email
-# ng target). Ito ang parehong pattern ng _login_attempts sa itaas, pero
+# ng target). Ito ang parehong pattern ng login lockout sa ibaba, pero
 # hiwalay dahil iba ang key (email, hindi IP) at dahil dapat mag-reset ito
 # tuwing may BAGONG code na ipinadala (luma nang code, bagong attempt budget).
-_code_attempts = {}
 CODE_MAX_ATTEMPTS = 5
 
 def register_code_attempt(key):
-    _code_attempts[key] = _code_attempts.get(key, 0) + 1
+    now = time.time()
+    row = RateLimitEntry.query.filter_by(key=f'code_attempt:{key}').first()
+    if row:
+        row.count += 1
+        row.last_at = now
+    else:
+        db.session.add(RateLimitEntry(key=f'code_attempt:{key}', count=1, first_at=now, last_at=now))
+    db.session.commit()
 
 def clear_code_attempts(key):
-    _code_attempts.pop(key, None)
+    RateLimitEntry.query.filter_by(key=f'code_attempt:{key}').delete()
+    db.session.commit()
 
 def code_attempts_exceeded(key):
-    return _code_attempts.get(key, 0) >= CODE_MAX_ATTEMPTS
+    row = RateLimitEntry.query.filter_by(key=f'code_attempt:{key}').first()
+    return bool(row and row.count >= CODE_MAX_ATTEMPTS)
 
 def send_verification_email(user):
     code = generate_code()
@@ -318,6 +330,25 @@ class SupportMessage(db.Model):
     admin_reply = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.String(30), nullable=False)
     replied_at = db.Column(db.String(30), nullable=True)
+
+class RateLimitEntry(db.Model):
+    """Database-backed na counter para sa login lockouts at verification
+    code cooldowns/attempts. BAGO (Setyembre 2026): dating plain Python
+    dict lang ito sa memorya ng proseso (_login_attempts, _code_attempts,
+    _code_send_times) — gumagana lang nang tama kung IISANG proseso
+    lagi ang humahawak ng buong app (tulad ng dating setup sa Render).
+    Kapag na-deploy sa serverless platform (hal. Vercel), bawat request
+    ay maaaring tumakbo sa BAGO/HIWALAY na proseso — mawawala kaagad ang
+    laman ng mga dict na iyon, kaya hindi na maasahan ang lockout/cooldown.
+    Sa pagsulat nito sa database sa halip, gumagana ito nang tama kahit
+    saan pa ito tumakbo."""
+    id = db.Column(db.Integer, primary_key=True)
+    # hal. 'login:203.0.113.5' o 'code_attempt:juan@email.com' o
+    # 'code_send:juan@email.com' — ginagawang natatangi ang kind+key.
+    key = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    count = db.Column(db.Integer, nullable=False, default=0)
+    first_at = db.Column(db.Float, nullable=False)
+    last_at = db.Column(db.Float, nullable=False)
 # Kusa nitong lilikhain ang mga database table na wala pa (hindi ginagalaw ang existing tables)
 with app.app_context():
     db.create_all()
@@ -485,14 +516,11 @@ def login_required(f):
         return f(*args, **kwargs)
     return wrapper
 
-# SECURITY FIX: simple in-memory rate limiter para sa /api/login, laban sa
-# brute-force password guessing. Naka-track ito per-IP; nire-reset ang
-# counter pagkatapos ng LOGIN_LOCKOUT_SECONDS. Tandaan: in-memory lang ito,
-# kaya nare-reset ito tuwing mag-restart ang server o kung maraming worker
-# process — sapat na ito para sa isang basic deployment, pero kung
-# multi-process/production na talaga, mas mainam gumamit ng Flask-Limiter
-# na may shared storage (hal. Redis).
-_login_attempts = {}
+# SECURITY FIX: database-backed na rate limiter (RateLimitEntry) para sa
+# /api/login, laban sa brute-force password guessing. Naka-track ito
+# per-IP; nire-reset ang counter pagkatapos ng LOGIN_LOCKOUT_SECONDS.
+# Nasa database ito (hindi na plain in-memory dict) para gumana nang tama
+# kahit maraming worker process o serverless deployment (hal. Vercel).
 LOGIN_MAX_ATTEMPTS = 5
 LOGIN_LOCKOUT_SECONDS = 300
 
@@ -505,21 +533,28 @@ def _client_ip():
     return request.remote_addr or 'unknown'
 
 def is_login_locked(ip):
-    entry = _login_attempts.get(ip)
-    if not entry:
+    row = RateLimitEntry.query.filter_by(key=f'login:{ip}').first()
+    if not row:
         return False
-    count, first_attempt_time = entry
-    if time.time() - first_attempt_time > LOGIN_LOCKOUT_SECONDS:
-        _login_attempts.pop(ip, None)
+    if time.time() - row.first_at > LOGIN_LOCKOUT_SECONDS:
+        db.session.delete(row)
+        db.session.commit()
         return False
-    return count >= LOGIN_MAX_ATTEMPTS
+    return row.count >= LOGIN_MAX_ATTEMPTS
 
 def register_failed_login(ip):
-    count, first_attempt_time = _login_attempts.get(ip, (0, time.time()))
-    _login_attempts[ip] = (count + 1, first_attempt_time)
+    now = time.time()
+    row = RateLimitEntry.query.filter_by(key=f'login:{ip}').first()
+    if row:
+        row.count += 1
+        row.last_at = now
+    else:
+        db.session.add(RateLimitEntry(key=f'login:{ip}', count=1, first_at=now, last_at=now))
+    db.session.commit()
 
 def clear_login_attempts(ip):
-    _login_attempts.pop(ip, None)
+    RateLimitEntry.query.filter_by(key=f'login:{ip}').delete()
+    db.session.commit()
 
 # SECURITY FIX: CSRF protection. Gumagawa ng random na csrf_token na naka-link
 # sa session ng bisita (kahit hindi pa naka-login), inilalagay ito sa
