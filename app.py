@@ -43,6 +43,17 @@ if _database_url.startswith('postgres://'):
     _database_url = _database_url.replace('postgres://', 'postgresql://', 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = _database_url or 'sqlite:///harvestly.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# FIX (SSL connection closed unexpectedly): sa serverless (Vercel), bawat
+# function invocation ay maaaring gumamit ng "stale" na naka-cache na
+# database connection na na-timeout/na-close na pala sa Neon side (lalo na
+# sa free tier na may auto-suspend). pool_pre_ping ang nagche-check muna
+# kung buhay pa ang connection bago ito gamitin — kung patay na, gagawa ito
+# ng bago imbes na mag-error. pool_recycle naman ang nagsisiguro na hindi
+# na-hahawakan nang matagal ang isang connection nang walang ginagawa.
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 280,
+}
 
 # SECURITY FIX: mas ligtas na session cookie settings.
 # I-set ang FLASK_ENV=production (o HTTPS_ENABLED=1) sa environment kapag
