@@ -2031,7 +2031,6 @@ function renderRecords() {
 
   pTbody.appendChild(fragment);
 }
-  }
 }
 document.getElementById('records-search')?.addEventListener('input', renderRecords);
 async function deleteRecord(id) {
