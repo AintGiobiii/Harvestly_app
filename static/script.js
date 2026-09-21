@@ -1313,12 +1313,21 @@ if (btnAddRow) {
 }
 function calculateTotalExpenseInput() {
   let total = 0;
-  const amounts = document.querySelectorAll('.expense-amount');
-  amounts.forEach(input => {
-    total += parseFloat(input.value) || 0;
-  });
+
+  if (!expenseContainer) {
+    return 0;
+  }
+
+  for (const input of expenseContainer.querySelectorAll('.expense-amount')) {
+    total += Number.parseFloat(input.value) || 0;
+  }
+
   const totalDisplay = document.getElementById('expense-calculated-total');
-  if (totalDisplay) totalDisplay.textContent = `₱${total.toFixed(2)}`;
+
+  if (totalDisplay) {
+    totalDisplay.textContent = `₱${total.toFixed(2)}`;
+  }
+
   return total;
 }
 /* ACTUAL INCOME MONITORING LOGIC */
