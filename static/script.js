@@ -2031,7 +2031,7 @@ function renderRecords() {
 
   pTbody.appendChild(fragment);
 }
-}
+
 document.getElementById('records-search')?.addEventListener('input', renderRecords);
 async function deleteRecord(id) {
   if (!confirm('Delete this record?')) {
@@ -2062,7 +2062,6 @@ async function deleteRecord(id) {
   } catch (e) {
     alert('Error deleting record.');
   }
-}
 }
 // ==================== PRODUCE VIEW DETAILS: HARVEST COUNTDOWN + LINKED EXPENSES ====================
 // Karaniwang bilang ng buwan bago ma-harvest, per crop (estimate lang, PH farming reference)
