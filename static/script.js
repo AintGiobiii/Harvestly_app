@@ -147,20 +147,44 @@ let currentActualIncome = 0;
 let activeViewTab = 'produce';
 let lastSavedType = 'produce'; // To handle dynamic modal buttons
 // ==================== MONTH HELPERS ====================
-function getMonthKey(dateStr) {
-  if (!dateStr) return '';
-  return dateStr.slice(0, 7); // "YYYY-MM"
+const productsByMonthCache = new Map();
+
+function rebuildProductsByMonthCache() {
+  productsByMonthCache.clear();
+
+  for (const record of records) {
+    if (record.type !== 'produce') {
+      continue;
+    }
+
+    const month = getMonthKey(record.date);
+
+    if (!month) {
+      continue;
+    }
+
+    if (!productsByMonthCache.has(month)) {
+      productsByMonthCache.set(month, new Set());
+    }
+
+    productsByMonthCache.get(month).add(record.name);
+  }
 }
-function getMonthLabel(monthKey) {
-  if (!monthKey) return 'Unknown';
-  const [y, m] = monthKey.split('-');
-  const d = new Date(parseInt(y), parseInt(m) - 1, 1);
-  return d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-}
+
 function getProductsForMonth(dateStr) {
   const monthKey = getMonthKey(dateStr);
-  const names = [...new Set(records.filter(r => r.type === 'produce' && getMonthKey(r.date) === monthKey).map(r => r.name))];
-  return names.length > 0 ? names.join(', ') : 'General Farm Income';
+
+  if (!monthKey) {
+    return 'General Farm Income';
+  }
+
+  const products = productsByMonthCache.get(monthKey);
+
+  if (!products || products.size === 0) {
+    return 'General Farm Income';
+  }
+
+  return [...products].join(', ');
 }
 // Safe Element Selectors
 const screenSplash = document.getElementById('screen-splash');
@@ -1046,8 +1070,11 @@ async function fetchUserDataFromBackend() {
     if (response.ok) {
       const data = await response.json();
       records = data.records || [];
-      actualIncomeHistory = data.incomeHistory || [];
-      currentRole = data.role || 'farmer';
+actualIncomeHistory = data.incomeHistory || [];
+
+rebuildProductsByMonthCache();
+
+currentRole = data.role || 'farmer';
       usageStatus = data.usage || usageStatus;
       // Dashboard "Actual Income" should reflect ALL saved income entries combined,
       // not just the most recently added one — same as Sales, Expenses, and Profit.
@@ -1697,45 +1724,96 @@ document.getElementById('btn-pricing-saved-close')?.addEventListener('click', ()
 });
 // Dashboard Update
 function updateDashboard() {
-  const sales = records.filter(r => r.type === 'produce').reduce((s, r) => s + r.amount, 0);
-  const expenses = records.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0);
+  let sales = 0;
+  let expenses = 0;
+
+  for (const record of records) {
+    const amount = Number(record.amount) || 0;
+
+    if (record.type === 'produce') {
+      sales += amount;
+    } else if (record.type === 'expense') {
+      expenses += amount;
+    }
+  }
+
   const profit = currentActualIncome - expenses;
+
   const statSales = document.getElementById('stat-sales');
   const statExpenses = document.getElementById('stat-expenses');
   const statActual = document.getElementById('stat-actual-income');
   const statProfit = document.getElementById('stat-profit');
-  if (statSales) statSales.textContent = `₱${sales.toFixed(2)}`;
-  if (statExpenses) statExpenses.textContent = `₱${expenses.toFixed(2)}`;
-  if (statActual) statActual.textContent = `₱${currentActualIncome.toFixed(2)}`;
+
+  if (statSales) {
+    statSales.textContent = `₱${sales.toFixed(2)}`;
+  }
+
+  if (statExpenses) {
+    statExpenses.textContent = `₱${expenses.toFixed(2)}`;
+  }
+
+  if (statActual) {
+    statActual.textContent = `₱${currentActualIncome.toFixed(2)}`;
+  }
+
   if (statProfit) {
     statProfit.textContent = `₱${profit.toFixed(2)}`;
+
     const card = document.getElementById('stat-profit-card');
+
     if (card) {
-      if (profit < 0) card.classList.add('negative');
-      else card.classList.remove('negative');
+      card.classList.toggle('negative', profit < 0);
     }
   }
+
   const recentList = document.getElementById('recent-list');
-  if (recentList) {
-    recentList.innerHTML = '';
-    const recent = [...records].reverse().slice(0, 5);
-    if (recent.length === 0) {
-      recentList.innerHTML = '<div class="empty-state">No records added yet.</div>';
-      return;
-    }
-    recent.forEach(item => {
-      const row = document.createElement('div');
-      row.className = 'record-row';
-      row.innerHTML = `
-        <span class="record-dot record-dot--${item.type}"></span>
-        <div class="record-name">${escapeHtml(item.name)} <span class="record-meta">• ${escapeHtml(item.date)}</span></div>
-        <div class="record-amount ${item.type === 'produce' ? 'record-amount--positive' : 'record-amount--negative'}">
-          ${item.type === 'produce' ? '+' : '-'}₱${item.amount.toFixed(2)}
-        </div>
-      `;
-      recentList.appendChild(row);
-    });
+
+  if (!recentList) {
+    return;
   }
+
+  recentList.innerHTML = '';
+
+  // Ang API ay nagbabalik na ng records mula latest hanggang oldest.
+  const recent = records.slice(0, 5);
+
+  if (recent.length === 0) {
+    recentList.innerHTML =
+      '<div class="empty-state">No records added yet.</div>';
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  for (const item of recent) {
+    const row = document.createElement('div');
+    row.className = 'record-row';
+
+    const amount = Number(item.amount) || 0;
+    const isProduce = item.type === 'produce';
+
+    row.innerHTML = `
+      <span class="record-dot record-dot--${isProduce ? 'produce' : 'expense'}"></span>
+      <div class="record-name">
+        ${escapeHtml(item.name || '')}
+        <span class="record-meta">
+          • ${escapeHtml(item.date || '')}
+        </span>
+      </div>
+      <div class="record-amount ${
+        isProduce
+          ? 'record-amount--positive'
+          : 'record-amount--negative'
+      }">
+        ${isProduce ? '+' : '-'}₱${amount.toFixed(2)}
+      </div>
+    `;
+
+    fragment.appendChild(row);
+  }
+
+  recentList.appendChild(fragment);
+}
 }
 // ==================== SUBSCRIPTION / USAGE LIMIT ====================
 // BAGO: ang free-plan progress banner ay lumalabas lang sa Dashboard habang
