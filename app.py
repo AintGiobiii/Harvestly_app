@@ -224,14 +224,13 @@ def send_reset_email(user):
     mark_code_sent('reset:' + user.email)
     clear_code_attempts('reset:' + user.email)
 
-# ==================== ACCOUNT: PHONE/EMAIL LOGIN + AVATAR ====================
-# Bago: mag-log in gamit ang phone number o email (hindi na username) para
-# mas secure — mas mahirap i-guess/enumerate ng iba ang account kaysa sa
-# plain username. Nananatili ang username sa Register para sa display/branding
-# lang. Simpleng avatar picker din (preset na emoji, walang upload) bilang
+# ==================== ACCOUNT: EMAIL LOGIN + AVATAR ====================
+# Mag-log in gamit ang email (hindi na username) para mas secure — mas
+# mahirap i-guess/enumerate ng iba ang account kaysa sa plain username.
+# Nananatili ang username sa Register para sa display/branding lang.
+# Simpleng avatar picker din (preset na emoji, walang upload) bilang
 # light customization.
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-PHONE_RE = re.compile(r'^\+?[0-9\s\-]{7,15}$')
 ALLOWED_AVATARS = ['🌾', '🌽', '🍅', '🥕', '🍓', '🐄', '🐓', '👩\u200d🌾', '👨\u200d🌾']
 DEFAULT_AVATAR = ALLOWED_AVATARS[0]
 
@@ -241,21 +240,17 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(100), nullable=False)
     username = db.Column(db.String(50), unique=True, nullable=False)
-    # Ginagamit na ngayon para mag-log in sa halip na username (isa lang dito
-    # ang required, hindi pareho — depende kung phone o email ang ipinasok
-    # sa Register).
+    # Ginagamit na ngayon para mag-log in sa halip na username.
     email = db.Column(db.String(120), unique=True, nullable=True)
-    phone_number = db.Column(db.String(20), unique=True, nullable=True)
     # Preset na emoji avatar lang (isa sa ALLOWED_AVATARS) — simpleng
     # customization, walang image upload/storage na kailangan.
     avatar = db.Column(db.String(10), nullable=False, default=DEFAULT_AVATAR)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='farmer')  # 'farmer' or 'admin'
     # ==================== EMAIL VERIFICATION + FORGOT PASSWORD ====================
-    # email_verified: True kapag walang email (phone-only account, walang
-    # need i-verify) O kapag na-verify na. Bago (mula sa email verification
-    # feature): kapag may email ang account, kailangan itong ma-verify muna
-    # bago makapag-login (tingnan ang /api/login at /api/verify-email).
+    # email_verified: True kapag na-verify na. Kapag may email ang
+    # account, kailangan itong ma-verify muna bago makapag-login
+    # (tingnan ang /api/login at /api/verify-email).
     email_verified = db.Column(db.Boolean, nullable=False, default=False)
     verification_code = db.Column(db.String(10), nullable=True)
     verification_code_expires = db.Column(db.String(30), nullable=True)  # unix timestamp bilang string
@@ -422,12 +417,11 @@ def run_safe_migrations():
                     'cycle_has_product': "ALTER TABLE user ADD COLUMN cycle_has_product BOOLEAN NOT NULL DEFAULT 0",
                     'cycle_has_expense': "ALTER TABLE user ADD COLUMN cycle_has_expense BOOLEAN NOT NULL DEFAULT 0",
                     'cycle_has_income': "ALTER TABLE user ADD COLUMN cycle_has_income BOOLEAN NOT NULL DEFAULT 0",
-                    # Bago: phone/email login + avatar. Tandaan — ang mga EXISTING
-                    # na account (na wala pang laman ang email/phone_number) ay
-                    # hindi na makaka-login hanggang malagyan sila ng phone o
-                    # email (hal. direkta sa database, o gumawa ng account ulit).
+                    # Bago: email login + avatar. Tandaan — ang mga EXISTING
+                    # na account (na wala pang laman ang email) ay hindi na
+                    # makaka-login hanggang malagyan sila ng email (hal.
+                    # direkta sa database, o gumawa ng account ulit).
                     'email': "ALTER TABLE user ADD COLUMN email VARCHAR(120)",
-                    'phone_number': "ALTER TABLE user ADD COLUMN phone_number VARCHAR(20)",
                     'avatar': f"ALTER TABLE user ADD COLUMN avatar VARCHAR(10) NOT NULL DEFAULT '{DEFAULT_AVATAR}'",
                     # Bago: email verification + forgot password codes.
                     'verification_code': "ALTER TABLE user ADD COLUMN verification_code VARCHAR(10)",
@@ -460,9 +454,9 @@ def ensure_default_admin():
         existing_admin = User.query.filter_by(role='admin').first()
         if not existing_admin:
             admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-            # Kailangan ng email/phone ang admin dahil phone o email na lang
-            # ang gamit sa login. Puwedeng i-override gamit ang ADMIN_EMAIL
-            # env var; may default para hindi mag-crash ang unang setup.
+            # Kailangan ng email ang admin dahil email na lang ang gamit sa
+            # login. Puwedeng i-override gamit ang ADMIN_EMAIL env var; may
+            # default para hindi mag-crash ang unang setup.
             admin_email = os.environ.get('ADMIN_EMAIL', 'admin@harvestly.local')
             admin_password = os.environ.get('ADMIN_PASSWORD') or secrets.token_urlsafe(12)
             hashed_pw = bcrypt.generate_password_hash(admin_password).decode('utf-8')
@@ -639,58 +633,38 @@ def signup():
         if len(password) < 6:
             return jsonify({'error': 'Dapat hindi bababa sa 6 characters ang password.'}), 400
         if not contact:
-            return jsonify({'error': 'Kailangan ng phone number o email para sa log in.'}), 400
-
-        email_val = None
-        phone_val = None
-        if '@' in contact:
-            if not EMAIL_RE.match(contact):
-                return jsonify({'error': 'Hindi valid ang email address.'}), 400
-            email_val = contact.lower()
-        else:
-            if not PHONE_RE.match(contact):
-                return jsonify({'error': 'Hindi valid ang phone number.'}), 400
-            phone_val = contact
+            return jsonify({'error': 'Kailangan ng email para sa pagpaparehistro.'}), 400
+        if not EMAIL_RE.match(contact):
+            return jsonify({'error': 'Hindi valid ang email address.'}), 400
+        email_val = contact.lower()
 
         if User.query.filter_by(username=username).first():
             return jsonify({'error': 'Ang username na ito ay ginagamit na.'}), 400
-        if email_val and User.query.filter_by(email=email_val).first():
+        if User.query.filter_by(email=email_val).first():
             return jsonify({'error': 'May account na gumagamit na ng email na ito.'}), 400
-        if phone_val and User.query.filter_by(phone_number=phone_val).first():
-            return jsonify({'error': 'May account na gumagamit na ng phone number na ito.'}), 400
 
         hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
         new_user = User(
             full_name=data.get('name', 'User'),
             username=username,
             email=email_val,
-            phone_number=phone_val,
             avatar=avatar,
             password_hash=hashed_pw,
             role='farmer',
-            # Kung phone-only ang signup, walang email na kailangang i-verify.
-            # Kung may email, mananatiling False ito hanggang ma-verify.
-            email_verified=(email_val is None)
+            # Mananatiling False ito hanggang ma-verify ang email.
+            email_verified=False
         )
         db.session.add(new_user)
         db.session.flush()
-        # Bago: kapag email ang ginamit sa Register, magpadala muna ng
-        # verification code at HUWAG pa i-log in — kailangan munang i-verify
-        # (tingnan ang /api/verify-email). Kung phone number ang ginamit,
-        # walang email na ipapadalhan, kaya diretsong mag-log in tulad ng dati.
-        if email_val:
-            send_verification_email(new_user)
-            db.session.commit()
-            return jsonify({
-                'message': 'Nagawa ang account! Ipinadala ang verification code sa email mo.',
-                'requiresVerification': True,
-                'email': email_val
-            })
+        # Kailangan munang i-verify ang email bago mag-log in (tingnan ang
+        # /api/verify-email) — ipinapadala na rito ang verification code.
+        send_verification_email(new_user)
         db.session.commit()
-        session['user_id'] = new_user.id
-        session['username'] = new_user.full_name
-        session['role'] = new_user.role
-        return jsonify({'message': 'Success', 'username': new_user.full_name, 'role': new_user.role, 'avatar': new_user.avatar})
+        return jsonify({
+            'message': 'Nagawa ang account! Ipinadala ang verification code sa email mo.',
+            'requiresVerification': True,
+            'email': email_val
+        })
     except Exception as e:
         db.session.rollback()
         print(f"Error sa signup: {e}")
@@ -703,14 +677,11 @@ def login():
         return jsonify({'error': 'Sobra na ang failed login attempts. Subukan ulit mamaya.'}), 429
     try:
         data = request.json or {}
-        # Log in na gamit ang phone number o email (hindi na username).
+        # Log in na gamit ang email (hindi na username).
         identifier = (data.get('identifier') or '').strip()
         user = None
         if identifier:
-            if '@' in identifier:
-                user = User.query.filter_by(email=identifier.lower()).first()
-            else:
-                user = User.query.filter_by(phone_number=identifier).first()
+            user = User.query.filter_by(email=identifier.lower()).first()
         if user and bcrypt.check_password_hash(user.password_hash, data.get('password', '')):
             # Bago: kailangang na-verify na ang email bago pumasok sa app,
             # kung may email ang account. Kung wala pang (o expired na) active
@@ -731,7 +702,7 @@ def login():
             session['role'] = user.role
             return jsonify({'message': 'Success', 'username': user.full_name, 'role': user.role, 'avatar': user.avatar})
         register_failed_login(ip)
-        return jsonify({'error': 'Maling phone number/email o password.'}), 401
+        return jsonify({'error': 'Maling email o password.'}), 401
     except Exception as e:
         print(f"Error sa login: {e}")
         return jsonify({'error': 'May naganap na error sa pag-login.'}), 500
