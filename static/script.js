@@ -1984,25 +1984,54 @@ if (btnRequestSubscription) {
 function renderRecords() {
   const pTbody = document.getElementById('produce-tbody');
   const search = document.getElementById('records-search')?.value.toLowerCase() || '';
-  if (pTbody) {
-    pTbody.innerHTML = '';
-    const prodRecords = records.filter(r => r.type === 'produce' && r.name.toLowerCase().includes(search));
-    if (prodRecords.length === 0) {
-      pTbody.innerHTML = '<tr><td colspan="6" class="empty-state">No product / expense records found.</td></tr>';
-    } else {
-      prodRecords.forEach((item) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>${escapeHtml(item.name)}</strong></td>
-          <td class="align-right">₱${(item.pricePerUnit || 0).toFixed(2)}</td>
-          <td class="align-right record-amount--positive">₱${item.amount.toFixed(2)}</td>
-          <td class="align-right">₱${(item.amount * 0.1).toFixed(2)}</td>
-          <td>${escapeHtml(item.date)}</td>
-          <td class="row-actions-cell"><button class="btn-view-details" onclick="openProduceDetail('${item.id}')">View Expenses for this Product</button><button class="row-delete" onclick="deleteRecord('${item.id}')">Delete</button></td>
-        `;
-        pTbody.appendChild(tr);
-      });
-    }
+
+  if (!pTbody) return;
+
+  pTbody.innerHTML = '';
+
+  const prodRecords = records.filter(
+    r => r.type === 'produce' && (r.name || '').toLowerCase().includes(search)
+  );
+
+  if (prodRecords.length === 0) {
+    pTbody.innerHTML =
+      '<tr><td colspan="6" class="empty-state">No product / expense records found.</td></tr>';
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  prodRecords.forEach((item) => {
+    const tr = document.createElement('tr');
+
+    const pricePerUnit = Number(item.pricePerUnit) || 0;
+    const amount = Number(item.amount) || 0;
+
+    tr.innerHTML = `
+      <td><strong>${escapeHtml(item.name || '')}</strong></td>
+      <td class="align-right">₱${pricePerUnit.toFixed(2)}</td>
+      <td class="align-right record-amount--positive">₱${amount.toFixed(2)}</td>
+      <td class="align-right">₱${(amount * 0.1).toFixed(2)}</td>
+      <td>${escapeHtml(item.date || '')}</td>
+      <td class="row-actions-cell">
+        <button
+          class="btn-view-details"
+          onclick="openProduceDetail('${item.id}')">
+          View Expenses for this Product
+        </button>
+        <button
+          class="row-delete"
+          onclick="deleteRecord('${item.id}')">
+          Delete
+        </button>
+      </td>
+    `;
+
+    fragment.appendChild(tr);
+  });
+
+  pTbody.appendChild(fragment);
+}
   }
 }
 document.getElementById('records-search')?.addEventListener('input', renderRecords);
