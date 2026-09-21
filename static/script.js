@@ -1823,7 +1823,6 @@ function updateDashboard() {
 
   recentList.appendChild(fragment);
 }
-}
 // ==================== SUBSCRIPTION / USAGE LIMIT ====================
 // BAGO: ang free-plan progress banner ay lumalabas lang sa Dashboard habang
 // 'free' pa ang subscriptionStatus. Sa sandaling maka-subscribe na ang user
