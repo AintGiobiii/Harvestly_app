@@ -1998,16 +1998,35 @@ function renderRecords() {
 }
 document.getElementById('records-search')?.addEventListener('input', renderRecords);
 async function deleteRecord(id) {
-  if (confirm("Delete this record?")) {
-    try {
-      const res = await fetch(`/api/records/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        await fetchUserDataFromBackend();
-      }
-    } catch (e) {
-      alert("Error deleting record.");
-    }
+  if (!confirm('Delete this record?')) {
+    return;
   }
+
+  try {
+    const res = await fetch(`/api/records/${id}`, {
+      method: 'DELETE'
+    });
+
+    if (!res.ok) {
+      alert('Error deleting record.');
+      return;
+    }
+
+    // Tanggalin agad sa local data para hindi na i-download
+    // muli ang buong records list.
+    records = records.filter(
+      record => String(record.id) !== String(id)
+    );
+
+    rebuildProductsByMonthCache();
+    updateDashboard();
+    renderRecords();
+    renderReports();
+    initComputationDropdowns();
+  } catch (e) {
+    alert('Error deleting record.');
+  }
+}
 }
 // ==================== PRODUCE VIEW DETAILS: HARVEST COUNTDOWN + LINKED EXPENSES ====================
 // Karaniwang bilang ng buwan bago ma-harvest, per crop (estimate lang, PH farming reference)
