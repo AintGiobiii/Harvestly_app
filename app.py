@@ -312,26 +312,26 @@ def run_safe_migrations():
 
                 if 'email_verified' not in user_columns:
                     with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE user ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT FALSE"))
-                        conn.execute(text("UPDATE user SET email_verified = TRUE"))
+                        conn.execute(text("ALTER TABLE \"user\" ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT FALSE"))
+                        conn.execute(text("UPDATE \"user\" SET email_verified = TRUE"))
                         conn.commit()
                     print("Migration: added 'email_verified' column to user (existing accounts grandfathered as verified).")
                 user_migrations = {
-                    'role': "ALTER TABLE user ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'farmer'",
-                    'subscription_status': "ALTER TABLE user ADD COLUMN subscription_status VARCHAR(20) NOT NULL DEFAULT 'free'",
-                    'cycle_count': "ALTER TABLE user ADD COLUMN cycle_count INTEGER NOT NULL DEFAULT 0",
-                    'cycle_has_product': "ALTER TABLE user ADD COLUMN cycle_has_product BOOLEAN NOT NULL DEFAULT FALSE",
-                    'cycle_has_expense': "ALTER TABLE user ADD COLUMN cycle_has_expense BOOLEAN NOT NULL DEFAULT FALSE",
-                    'cycle_has_income': "ALTER TABLE user ADD COLUMN cycle_has_income BOOLEAN NOT NULL DEFAULT FALSE",
-                    'email': "ALTER TABLE user ADD COLUMN email VARCHAR(120)",
-                    'avatar': f"ALTER TABLE user ADD COLUMN avatar VARCHAR(10) NOT NULL DEFAULT '{DEFAULT_AVATAR}'",
-                    'verification_code': "ALTER TABLE user ADD COLUMN verification_code VARCHAR(10)",
-                    'verification_code_expires': "ALTER TABLE user ADD COLUMN verification_code_expires VARCHAR(30)",
-                    'reset_code': "ALTER TABLE user ADD COLUMN reset_code VARCHAR(10)",
-                    'reset_code_expires': "ALTER TABLE user ADD COLUMN reset_code_expires VARCHAR(30)",
-                    'purchased_cycles': "ALTER TABLE user ADD COLUMN purchased_cycles INTEGER NOT NULL DEFAULT 0",
-                    'language': "ALTER TABLE user ADD COLUMN language VARCHAR(5) NOT NULL DEFAULT 'en'",
-                    'language_set': "ALTER TABLE user ADD COLUMN language_set BOOLEAN NOT NULL DEFAULT FALSE",
+                    'role': "ALTER TABLE \"user\" ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'farmer'",
+                    'subscription_status': "ALTER TABLE \"user\" ADD COLUMN subscription_status VARCHAR(20) NOT NULL DEFAULT 'free'",
+                    'cycle_count': "ALTER TABLE \"user\" ADD COLUMN cycle_count INTEGER NOT NULL DEFAULT 0",
+                    'cycle_has_product': "ALTER TABLE \"user\" ADD COLUMN cycle_has_product BOOLEAN NOT NULL DEFAULT FALSE",
+                    'cycle_has_expense': "ALTER TABLE \"user\" ADD COLUMN cycle_has_expense BOOLEAN NOT NULL DEFAULT FALSE",
+                    'cycle_has_income': "ALTER TABLE \"user\" ADD COLUMN cycle_has_income BOOLEAN NOT NULL DEFAULT FALSE",
+                    'email': "ALTER TABLE \"user\" ADD COLUMN email VARCHAR(120)",
+                    'avatar': f"ALTER TABLE \"user\" ADD COLUMN avatar VARCHAR(10) NOT NULL DEFAULT '{DEFAULT_AVATAR}'",
+                    'verification_code': "ALTER TABLE \"user\" ADD COLUMN verification_code VARCHAR(10)",
+                    'verification_code_expires': "ALTER TABLE \"user\" ADD COLUMN verification_code_expires VARCHAR(30)",
+                    'reset_code': "ALTER TABLE \"user\" ADD COLUMN reset_code VARCHAR(10)",
+                    'reset_code_expires': "ALTER TABLE \"user\" ADD COLUMN reset_code_expires VARCHAR(30)",
+                    'purchased_cycles': "ALTER TABLE \"user\" ADD COLUMN purchased_cycles INTEGER NOT NULL DEFAULT 0",
+                    'language': "ALTER TABLE \"user\" ADD COLUMN language VARCHAR(5) NOT NULL DEFAULT 'en'",
+                    'language_set': "ALTER TABLE \"user\" ADD COLUMN language_set BOOLEAN NOT NULL DEFAULT FALSE",
                 }
                 # RESILIENCE FIX: dati, iisang connection/transaction lang ang
                 # ginagamit para sa LAHAT ng column additions sa loop na ito —
