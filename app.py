@@ -312,17 +312,17 @@ def run_safe_migrations():
 
                 if 'email_verified' not in user_columns:
                     with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE user ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT 0"))
-                        conn.execute(text("UPDATE user SET email_verified = 1"))
+                        conn.execute(text("ALTER TABLE user ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT FALSE"))
+                        conn.execute(text("UPDATE user SET email_verified = TRUE"))
                         conn.commit()
                     print("Migration: added 'email_verified' column to user (existing accounts grandfathered as verified).")
                 user_migrations = {
                     'role': "ALTER TABLE user ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'farmer'",
                     'subscription_status': "ALTER TABLE user ADD COLUMN subscription_status VARCHAR(20) NOT NULL DEFAULT 'free'",
                     'cycle_count': "ALTER TABLE user ADD COLUMN cycle_count INTEGER NOT NULL DEFAULT 0",
-                    'cycle_has_product': "ALTER TABLE user ADD COLUMN cycle_has_product BOOLEAN NOT NULL DEFAULT 0",
-                    'cycle_has_expense': "ALTER TABLE user ADD COLUMN cycle_has_expense BOOLEAN NOT NULL DEFAULT 0",
-                    'cycle_has_income': "ALTER TABLE user ADD COLUMN cycle_has_income BOOLEAN NOT NULL DEFAULT 0",
+                    'cycle_has_product': "ALTER TABLE user ADD COLUMN cycle_has_product BOOLEAN NOT NULL DEFAULT FALSE",
+                    'cycle_has_expense': "ALTER TABLE user ADD COLUMN cycle_has_expense BOOLEAN NOT NULL DEFAULT FALSE",
+                    'cycle_has_income': "ALTER TABLE user ADD COLUMN cycle_has_income BOOLEAN NOT NULL DEFAULT FALSE",
                     'email': "ALTER TABLE user ADD COLUMN email VARCHAR(120)",
                     'avatar': f"ALTER TABLE user ADD COLUMN avatar VARCHAR(10) NOT NULL DEFAULT '{DEFAULT_AVATAR}'",
                     'verification_code': "ALTER TABLE user ADD COLUMN verification_code VARCHAR(10)",
@@ -331,14 +331,24 @@ def run_safe_migrations():
                     'reset_code_expires': "ALTER TABLE user ADD COLUMN reset_code_expires VARCHAR(30)",
                     'purchased_cycles': "ALTER TABLE user ADD COLUMN purchased_cycles INTEGER NOT NULL DEFAULT 0",
                     'language': "ALTER TABLE user ADD COLUMN language VARCHAR(5) NOT NULL DEFAULT 'en'",
-                    'language_set': "ALTER TABLE user ADD COLUMN language_set BOOLEAN NOT NULL DEFAULT 0",
+                    'language_set': "ALTER TABLE user ADD COLUMN language_set BOOLEAN NOT NULL DEFAULT FALSE",
                 }
-                with db.engine.connect() as conn:
-                    for col, stmt in user_migrations.items():
-                        if col not in user_columns:
-                            conn.execute(text(stmt))
+                # RESILIENCE FIX: dati, iisang connection/transaction lang ang
+                # ginagamit para sa LAHAT ng column additions sa loop na ito —
+                # kaya kapag may ISANG sirang statement (hal. dating
+                # Postgres-incompatible na "BOOLEAN ... DEFAULT 0"), na-ro-
+                # rollback ang LAHAT ng kasamang migrations nang tahimik, kahit
+                # tama naman sila. Ngayon, hiwalay na connection/transaction
+                # ang bawat column para hindi sila magkabuntutan.
+                for col, stmt in user_migrations.items():
+                    if col not in user_columns:
+                        try:
+                            with db.engine.connect() as conn:
+                                conn.execute(text(stmt))
+                                conn.commit()
                             print(f"Migration: added '{col}' column to user.")
-                    conn.commit()
+                        except Exception as col_err:
+                            print(f"Migration FAILED for column '{col}': {col_err}")
         except Exception as e:
             print(f"Migration check skipped: {e}")
 run_safe_migrations()
