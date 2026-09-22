@@ -9,6 +9,27 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <!-- LANGUAGE PICKER: lumalabas nang isang beses lang, kaagad pagkatapos
+       mag-verify ng bagong account (o sa unang pag-login kung walang laman
+       ang language_set flag). Pwede ring buksan ulit ito anumang oras gamit
+       ang language pill sa tabi ng username sa topbar. -->
+  <div id="language-modal-backdrop" class="modal-backdrop">
+    <div class="modal-card lang-modal-card">
+      <div class="lang-modal-icon" aria-hidden="true">🌐</div>
+      <h2 class="modal-title" id="lang-modal-title">Choose your language</h2>
+      <p class="modal-sub" id="lang-modal-sub">Pumili ng gusto mong wika para sa app. Pwede mo itong palitan anumang oras sa taas, katabi ng username mo.</p>
+      <div class="lang-choice-row">
+        <button type="button" class="lang-choice-btn" data-lang="en">
+          <span class="lang-choice-flag" aria-hidden="true">🇬🇧</span>
+          <span class="lang-choice-name">English</span>
+        </button>
+        <button type="button" class="lang-choice-btn" data-lang="tl">
+          <span class="lang-choice-flag" aria-hidden="true">🇵🇭</span>
+          <span class="lang-choice-name">Tagalog</span>
+        </button>
+      </div>
+    </div>
+  </div>
   <!-- FIXED: Modal Backdrop Wrapper with Enhanced Design -->
   <div id="modal-backdrop" class="modal-backdrop">
     <div class="modal-card">
@@ -285,21 +306,21 @@
           <p class="field-error" id="login-error" hidden></p>
           <p class="field-success" id="login-info" hidden></p>
           <label class="field">
-            <span>Email</span>
+            <span data-i18n="auth.email">Email</span>
             <input type="email" id="login-identifier" autocomplete="email" placeholder="e.g. juan@email.com" required>
           </label>
           <label class="field">
-            <span>Password</span>
+            <span data-i18n="auth.password">Password</span>
             <div class="password-field-wrap">
               <input type="password" id="login-password" autocomplete="current-password" required>
-              <button type="button" class="toggle-password-btn" data-target="login-password" aria-label="Show or hide password">SHOW</button>
+              <button type="button" class="toggle-password-btn" data-target="login-password" aria-label="Show or hide password" data-i18n="auth.show">SHOW</button>
             </div>
           </label>
           <p class="auth-forgot-link-wrap">
-            <button type="button" class="auth-switch-link" data-tab="forgot">Forgot password?</button>
+            <button type="button" class="auth-switch-link" data-tab="forgot" data-i18n="auth.forgotPassword">Forgot password?</button>
           </p>
-          <button type="submit" class="btn btn-primary btn-block">Log in</button>
-          <p class="auth-switch-prompt">Don't have an account? <button type="button" class="auth-switch-link" data-tab="signup">Register here</button></p>
+          <button type="submit" class="btn btn-primary btn-block" data-i18n="auth.logIn">Log in</button>
+          <p class="auth-switch-prompt"><span data-i18n="auth.noAccount">Don't have an account?</span> <button type="button" class="auth-switch-link" data-tab="signup" data-i18n="auth.registerHere">Register here</button></p>
         </form>
         <!-- EMAIL VERIFICATION PANEL (after signup with email, or when login blocked pending verification) -->
         <form id="form-verify" class="auth-form" data-panel="verify" novalidate>
@@ -468,36 +489,36 @@
       <nav class="sidebar-nav">
         <button type="button" class="nav-item active" data-screen="dashboard">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="3" width="8" height="5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="10" width="8" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="13" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
-          Dashboard
+          <span data-i18n="nav.dashboard">Dashboard</span>
         </button>
         <button type="button" class="nav-item" data-screen="add-expense">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-          Add expense
+          <span data-i18n="nav.addExpense">Add expense</span>
         </button>
         <button type="button" class="nav-item" data-screen="actual-income">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
-          Income
+          <span data-i18n="nav.income">Income</span>
         </button>
         <button type="button" class="nav-item" data-screen="records">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-          View / search records
+          <span data-i18n="nav.records">View / search records</span>
         </button>
         <button type="button" class="nav-item" data-screen="reports">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 20V10M11 20V4M18 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-          Reports
+          <span data-i18n="nav.reports">Reports</span>
         </button>
         <button type="button" class="nav-item" data-screen="support">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
-          Customer Service
+          <span data-i18n="nav.support">Customer Service</span>
         </button>
         <button type="button" class="nav-item" data-screen="subscribe">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.2-5.4 3.2 1.3-6-4.6-4.1 6.1-.6z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
-          Subscribe
+          <span data-i18n="nav.subscribe">Subscribe</span>
         </button>
       </nav>
       <button id="btn-logout" type="button" class="nav-item nav-item--logout">
         <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></span>
-        Log out
+        <span data-i18n="nav.logout">Log out</span>
       </button>
     </aside>
     <main class="main">
@@ -505,41 +526,51 @@
         <button id="btn-menu" class="menu-toggle" aria-label="Open menu">
           <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
-        <h1 id="topbar-title">Home dashboard</h1>
-        <div class="topbar-user"><span class="topbar-avatar" id="topbar-avatar">🌾</span><span id="topbar-username">—</span></div>
+        <h1 id="topbar-title" data-i18n="topbar.dashboard">Home dashboard</h1>
+        <div class="topbar-user">
+          <button type="button" id="btn-lang-switch" class="lang-pill" aria-label="Change language" title="Change language">
+            <span id="lang-pill-label">EN</span>
+          </button>
+          <span class="topbar-avatar" id="topbar-avatar">🌾</span><span id="topbar-username">—</span>
+        </div>
       </header>
       <section id="screen-dashboard" class="screen active">
         <p class="lede">This is a summary of your harvest, actual income, and expenses. Tap the buttons below to manage records.</p>
         <div class="stat-row">
           <div class="stat-card">
             <span class="stat-tear" aria-hidden="true"></span>
-            <p class="stat-label">Expected Sales</p>
+            <p class="stat-label" data-i18n="dash.expectedSales">Expected Sales</p>
             <p class="stat-value" id="stat-sales">₱0.00</p>
           </div>
           <div class="stat-card stat-card--income">
             <span class="stat-tear" aria-hidden="true"></span>
-            <p class="stat-label">Actual Income</p>
+            <p class="stat-label" data-i18n="dash.actualIncome">Actual Income</p>
             <p class="stat-value" id="stat-actual-income">₱0.00</p>
           </div>
           <div class="stat-card">
             <span class="stat-tear" aria-hidden="true"></span>
-            <p class="stat-label">Total Expenses</p>
+            <p class="stat-label" data-i18n="dash.totalExpenses">Total Expenses</p>
             <p class="stat-value" id="stat-expenses">₱0.00</p>
           </div>
           <div class="stat-card stat-card--profit" id="stat-profit-card">
             <span class="stat-tear" aria-hidden="true"></span>
-            <p class="stat-label">Net Profit</p>
+            <p class="stat-label" data-i18n="dash.netProfit">Net Profit</p>
             <p class="stat-value" id="stat-profit">₱0.00</p>
           </div>
         </div>
         <div class="quick-actions">
-          <button type="button" class="btn btn-primary" data-screen="add-expense">+ Add Product & Expenses</button>
-          <button type="button" class="btn btn-outline" data-screen="actual-income">+ Add Actual Income</button>
+          <button type="button" class="btn btn-primary" data-screen="add-expense" data-i18n="dash.addProductBtn">+ Add Product & Expenses</button>
+          <button type="button" class="btn btn-outline" data-screen="actual-income" data-i18n="dash.addIncomeBtn">+ Add Actual Income</button>
+        </div>
+        <div id="pending-pricing-banner" class="panel pending-pricing-banner" style="display: none;">
+          <p class="pending-pricing-title" data-i18n="dash.pendingPricingTitle">⚠️ Some products still need a price</p>
+          <p class="pending-pricing-sub" data-i18n="dash.pendingPricingSub">These show ₱0.00 in your sales and reports until you set their pricing.</p>
+          <div id="pending-pricing-list" class="pending-pricing-list"></div>
         </div>
         <div id="subscription-banner" class="panel subscription-banner" style="display: none;">
           <div id="subscription-banner-free">
             <p class="subscription-banner-title">Free plan — <span id="cycle-count-label">0</span> / <span id="cycle-total-label">3</span> sessions used</p>
-            <p class="subscription-banner-sub">A session is 1 product + its expenses + its actual income. Once used up, adding new records will be locked until you subscribe.</p>
+            <p class="subscription-banner-sub" data-i18n="dash.sessionExplainer">A session is used each time you add a new Product & its Expenses. Logging Actual Income is always free. Once your sessions are used up, adding new products will be locked until you subscribe.</p>
             <button type="button" class="btn btn-primary" data-screen="subscribe">Tingnan ang mga Plan</button>
           </div>
         </div>
@@ -568,8 +599,8 @@
         </div>
         <div class="panel">
           <div class="panel-head">
-            <h2>Recent records</h2>
-            <button type="button" class="link-btn" data-screen="records">View all</button>
+            <h2 data-i18n="dash.recentRecords">Recent records</h2>
+            <button type="button" class="link-btn" data-screen="records" data-i18n="dash.viewAll">View all</button>
           </div>
           <div id="recent-list" class="record-list"></div>
         </div>
@@ -908,17 +939,22 @@
       <nav class="sidebar-nav">
         <button type="button" class="nav-item active" id="btn-admin-nav-dashboard">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><rect x="3" y="3" width="7" height="8" rx="1.6" stroke="currentColor" stroke-width="1.8" fill="none"/><rect x="14" y="3" width="7" height="5" rx="1.6" stroke="currentColor" stroke-width="1.8" fill="none"/><rect x="14" y="11" width="7" height="10" rx="1.6" stroke="currentColor" stroke-width="1.8" fill="none"/><rect x="3" y="14" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" fill="none"/></svg></span>
-          Dashboard
+          <span data-i18n="nav.dashboard">Dashboard</span>
         </button>
         <button type="button" class="nav-item" id="btn-admin-nav-support">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
-          Customer Service
+          <span data-i18n="nav.support">Customer Service</span>
           <span class="nav-badge" id="admin-support-badge" style="display: none;">0</span>
+        </button>
+        <button type="button" class="nav-item" id="btn-admin-nav-subscriptions">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.2-5.4 3.2 1.3-6-4.6-4.1 6.1-.6z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+          <span data-i18n="nav.subscriptions">Subscriptions</span>
+          <span class="nav-badge" id="admin-subscriptions-badge" style="display: none;">0</span>
         </button>
       </nav>
       <button id="btn-admin-logout" type="button" class="nav-item nav-item--logout">
         <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></span>
-        Log out
+        <span data-i18n="nav.logout">Log out</span>
       </button>
     </aside>
     <main class="main">
@@ -927,7 +963,12 @@
           <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
         <h1 id="admin-topbar-title">Dashboard</h1>
-        <div class="topbar-user"><span class="topbar-avatar" id="admin-topbar-avatar">🌾</span><span id="admin-topbar-username">—</span></div>
+        <div class="topbar-user">
+          <button type="button" id="btn-admin-lang-switch" class="lang-pill" aria-label="Change language" title="Change language">
+            <span id="admin-lang-pill-label">EN</span>
+          </button>
+          <span class="topbar-avatar" id="admin-topbar-avatar">🌾</span><span id="admin-topbar-username">—</span>
+        </div>
       </header>
       <section id="screen-admin-dashboard" class="screen active">
         <div class="adm-greet">
@@ -1019,6 +1060,15 @@
             <h2>Concerns</h2>
           </div>
           <div id="admin-support-list"></div>
+        </div>
+      </section>
+      <section id="screen-admin-subscriptions" class="screen">
+        <p class="lede">SECURITY FIX: awtomatikong na-a-approve dati ang kahit anong GCash reference number na i-type ng farmer, kaya wala talagang pagsuri kung totoo ba ang bayad. Ngayon, dito mo munang titingnan at ve-verify-in ang bawat payment reference bago mo i-approve — saka pa lang ma-grant ang mga sessions.</p>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Subscription requests</h2>
+          </div>
+          <div id="admin-subscriptions-list"></div>
         </div>
       </section>
     </main>
