@@ -197,6 +197,12 @@ class User(db.Model):
     cycle_has_product = db.Column(db.Boolean, nullable=False, default=False)
     cycle_has_expense = db.Column(db.Boolean, nullable=False, default=False)
     cycle_has_income = db.Column(db.Boolean, nullable=False, default=False)
+    # LANGUAGE PREFERENCE: 'en' (default/priority) o 'tl'. Ang language_set
+    # flag ang nagsasabi kung na-pili na ng user ang wika niya nang eksplisito
+    # — kapag False pa, ipapakita ng frontend ang language picker isang beses
+    # lang (kaagad pagkatapos mag-verify/mag-login ng bagong account).
+    language = db.Column(db.String(5), nullable=False, default='en')
+    language_set = db.Column(db.Boolean, nullable=False, default=False)
 
 class Record(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -227,7 +233,7 @@ class ActualIncome(db.Model):
 class SubscriptionRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='completed')  
+    status = db.Column(db.String(20), nullable=False, default='pending')  
     requested_at = db.Column(db.String(30), nullable=False)
     reviewed_at = db.Column(db.String(30), nullable=True)
     payment_reference = db.Column(db.String(100), nullable=True)
@@ -324,6 +330,8 @@ def run_safe_migrations():
                     'reset_code': "ALTER TABLE user ADD COLUMN reset_code VARCHAR(10)",
                     'reset_code_expires': "ALTER TABLE user ADD COLUMN reset_code_expires VARCHAR(30)",
                     'purchased_cycles': "ALTER TABLE user ADD COLUMN purchased_cycles INTEGER NOT NULL DEFAULT 0",
+                    'language': "ALTER TABLE user ADD COLUMN language VARCHAR(5) NOT NULL DEFAULT 'en'",
+                    'language_set': "ALTER TABLE user ADD COLUMN language_set BOOLEAN NOT NULL DEFAULT 0",
                 }
                 with db.engine.connect() as conn:
                     for col, stmt in user_migrations.items():
@@ -437,6 +445,7 @@ def usage_status(user):
         user.role == 'farmer' and
         user.cycle_count >= total_allowed
     )
+    has_pending = SubscriptionRequest.query.filter_by(user_id=user.id, status='pending').first() is not None
     return {
         'subscriptionStatus': user.subscription_status,
         'cycleCount': user.cycle_count,
@@ -449,8 +458,14 @@ def usage_status(user):
             'hasIncome': user.cycle_has_income,
         },
         'locked': locked,
+        'hasPendingSubscription': has_pending,
     }
 
+# DEPRECATED: dating ginagamit para maghintay ng product+expense+income
+# bago bilangin ang isang session — pinalitan ito ng mas mahigpit na logic
+# sa add_records() na direktang bumibilang bawat bagong produce submission.
+# Iniwan ang function na ito nang hindi tinatawag, kung sakaling kailangan
+# pang balikan/i-reference sa hinaharap.
 def check_cycle_completion(user):
     if user.cycle_has_product and user.cycle_has_expense and user.cycle_has_income:
         user.cycle_count += 1
@@ -539,7 +554,7 @@ def login():
             session['user_id'] = user.id
             session['username'] = user.full_name
             session['role'] = user.role
-            return jsonify({'message': 'Success', 'username': user.full_name, 'role': user.role, 'avatar': user.avatar})
+            return jsonify({'message': 'Success', 'username': user.full_name, 'role': user.role, 'avatar': user.avatar, 'language': user.language, 'languageSet': user.language_set})
         register_failed_login(ip)
         return jsonify({'error': 'Maling email o password.'}), 401
     except Exception as e:
@@ -560,7 +575,30 @@ def me():
     if not user:
         session.clear()
         return jsonify({'loggedIn': False})
-    return jsonify({'loggedIn': True, 'username': user.full_name, 'role': user.role, 'avatar': user.avatar})
+    return jsonify({'loggedIn': True, 'username': user.full_name, 'role': user.role, 'avatar': user.avatar, 'language': user.language, 'languageSet': user.language_set})
+
+ALLOWED_LANGUAGES = {'en', 'tl'}
+
+@app.route('/api/language', methods=['POST'])
+@login_required
+def set_language():
+    """Ise-save ang napiling wika ng user (English o Tagalog). Tinatawag ito
+    kapwa ng one-time language picker (bagong account) at ng language pill
+    sa topbar (pwedeng palitan anumang oras)."""
+    try:
+        user = get_current_user()
+        data = request.json or {}
+        lang = (data.get('language') or '').strip().lower()
+        if lang not in ALLOWED_LANGUAGES:
+            return jsonify({'error': 'Invalid na wika.'}), 400
+        user.language = lang
+        user.language_set = True
+        db.session.commit()
+        return jsonify({'message': 'Naka-save na ang language preference.', 'language': user.language, 'languageSet': True})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error sa pag-save ng language: {e}")
+        return jsonify({'error': 'May naganap na error sa pag-save ng wika.'}), 500
 
 @app.route('/api/verify-email', methods=['POST'])
 def verify_email():
@@ -589,7 +627,7 @@ def verify_email():
         session['user_id'] = user.id
         session['username'] = user.full_name
         session['role'] = user.role
-        return jsonify({'message': 'Na-verify na ang email mo!', 'username': user.full_name, 'role': user.role, 'avatar': user.avatar})
+        return jsonify({'message': 'Na-verify na ang email mo!', 'username': user.full_name, 'role': user.role, 'avatar': user.avatar, 'language': user.language, 'languageSet': user.language_set})
     except Exception as e:
         db.session.rollback()
         print(f"Error sa email verification: {e}")
@@ -714,6 +752,17 @@ def add_records():
             return jsonify({'error': 'Walang ipinadalang data.'}), 400
         items = payload if isinstance(payload, list) else [payload]
         last_new_produce_id = None
+        # BUSINESS-LOGIC FIX: dati, isang "session" ay binibilang lang laban
+        # sa 3 free uses kapag KUMPLETO na ang product + expense + actual
+        # income (tingnan ang check_cycle_completion). Dahil dito, puwedeng
+        # walang katapusang mag-add ng produce/expenses ang isang farmer
+        # basta hindi niya inilalagay ang Actual Income — hindi kailanman
+        # mauubos ang free sessions niya. Ngayon, isang bagong produce record
+        # (ibig sabihin, isang bagong "Add Product & Expenses" submission) na
+        # ang direktang bumibilang bilang isang ginamit na session — hindi na
+        # kailangang maghintay pa ng Actual Income, na maaaring buwan-buwan
+        # pang mailagay pagkatapos ng aktwal na ani.
+        created_new_produce = False
         for data in items:
             rec_type = data.get('type', 'expense')
             rec_name = data.get('name') or data.get('category') or 'Farm Expense'
@@ -747,11 +796,13 @@ def add_records():
             db.session.add(new_rec)
             if rec_type == 'produce':
                 user.cycle_has_product = True
+                created_new_produce = True
                 db.session.flush()
                 last_new_produce_id = new_rec.id
             elif rec_type == 'expense':
                 user.cycle_has_expense = True
-        check_cycle_completion(user)
+        if created_new_produce:
+            user.cycle_count += 1
         db.session.commit()
         return jsonify({'message': 'Nai-save na sa Database!', 'usage': usage_status(user)}), 200
     except Exception as e:
@@ -819,9 +870,13 @@ def update_record(rec_id):
 def add_income():
     try:
         user = get_current_user()
-        status = usage_status(user)
-        if status['locked']:
-            return jsonify({'error': 'Naabot na ang 3 free uses. Mag-request ng subscription para magpatuloy.', 'locked': True}), 403
+        # BUSINESS-LOGIC FIX: hindi na kino-count/lini-lock ang Actual Income
+        # laban sa 3 free sessions — ang session ay nagagamit na sa sandaling
+        # mag-submit ng bagong "Add Product & Expenses" (tingnan ang
+        # add_records()). Ang Actual Income ay resulta lang ng isang
+        # produkto na bayad na, kaya dapat pa rin itong ma-record kahit
+        # locked na ang account sa BAGONG produkto — hindi makatarungan na
+        # harangan ang farmer sa pag-log ng totoong natanggap niyang kita.
         data = request.json or {}
         new_inc = ActualIncome(
             user_id=user.id,
@@ -833,7 +888,6 @@ def add_income():
         )
         db.session.add(new_inc)
         user.cycle_has_income = True
-        check_cycle_completion(user)
         db.session.commit()
         return jsonify({'message': 'Income saved!', 'usage': usage_status(user)})
     except Exception as e:
@@ -865,6 +919,12 @@ def gcash_info():
 @app.route('/api/subscription/request', methods=['POST'])
 @login_required
 def request_subscription():
+    """SECURITY/BUSINESS-LOGIC FIX: dati, kaagad na-a-activate ang mga bagong
+    sessions sa sandaling mag-type ang user ng KAHIT ANONG text bilang GCash
+    reference number — walang tao (admin) na nagve-verify kung totoo ba ang
+    bayad. Ngayon, 'pending' muna ang request; kailangan munang i-approve ng
+    admin (tingnan ang /api/admin/subscriptions/<id>/approve) bago ma-grant
+    ang mga sessions."""
     try:
         user = get_current_user()
         data = request.json or {}
@@ -874,28 +934,102 @@ def request_subscription():
             return jsonify({'error': 'Pumili ng valid na plan.'}), 400
         if not payment_ref:
             return jsonify({'error': 'Kailangan ng GCash reference number.'}), 400
+        existing_pending = SubscriptionRequest.query.filter_by(user_id=user.id, status='pending').first()
+        if existing_pending:
+            return jsonify({'error': 'May pending ka nang subscription request. Hintayin munang ma-review ito ng admin bago mag-request ulit.'}), 400
         plan = SESSION_PLANS[plan_key]
         req = SubscriptionRequest(
             user_id=user.id,
-            status='completed',
+            status='pending',
             requested_at=datetime.utcnow().strftime('%Y-%m-%d %H:%M'),
-            reviewed_at=datetime.utcnow().strftime('%Y-%m-%d %H:%M'),
             payment_reference=payment_ref,
             plan=plan_key,
             sessions_granted=plan['sessions'],
         )
         db.session.add(req)
-        user.purchased_cycles += plan['sessions']
-        user.subscription_status = 'active'
         db.session.commit()
         return jsonify({
-            'message': f"Na-activate na ang {plan['sessions']} bagong sessions mo!",
+            'message': f"Naipadala ang request mo para sa {plan['sessions']} sessions ({plan_key}). Ire-review muna ito ng admin bago ma-activate.",
             'usage': usage_status(user)
         })
     except Exception as e:
         db.session.rollback()
         print(f"Error sa subscription request: {e}")
         return jsonify({'error': 'May naganap na error sa subscription request.'}), 500
+
+
+@app.route('/api/admin/subscriptions', methods=['GET'])
+def admin_list_subscriptions():
+    """Ipinapakita ang lahat ng subscription requests (pinakabago muna, at
+    ang mga 'pending' munа sa itaas) para ma-review at ma-approve/i-reject
+    ng admin — dito na-close ang loophole na dating awtomatikong
+    na-a-approve ang kahit anong self-reported na payment reference."""
+    if not require_admin():
+        return jsonify({'error': 'Admin access only.'}), 403
+    try:
+        reqs = SubscriptionRequest.query.order_by(
+            (SubscriptionRequest.status == 'pending').desc(), SubscriptionRequest.id.desc()
+        ).all()
+        result = []
+        for r in reqs:
+            u = User.query.get(r.user_id)
+            result.append({
+                'id': r.id,
+                'username': u.username if u else 'Unknown',
+                'fullName': u.full_name if u else 'Unknown',
+                'plan': r.plan,
+                'sessionsGranted': r.sessions_granted,
+                'paymentReference': r.payment_reference,
+                'status': r.status,
+                'requestedAt': r.requested_at,
+                'reviewedAt': r.reviewed_at,
+            })
+        return jsonify({'requests': result})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error sa admin subscription list: {e}")
+        return jsonify({'error': 'May naganap na error.'}), 500
+
+
+@app.route('/api/admin/subscriptions/<int:req_id>/approve', methods=['POST'])
+def admin_approve_subscription(req_id):
+    if not require_admin():
+        return jsonify({'error': 'Admin access only.'}), 403
+    try:
+        req = SubscriptionRequest.query.get(req_id)
+        if not req or req.status != 'pending':
+            return jsonify({'error': 'Hindi mahanap o hindi na pending ang request na ito.'}), 404
+        user = User.query.get(req.user_id)
+        if not user:
+            return jsonify({'error': 'Hindi mahanap ang account ng farmer na ito.'}), 404
+        user.purchased_cycles += (req.sessions_granted or 0)
+        user.subscription_status = 'active'
+        req.status = 'approved'
+        req.reviewed_at = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+        db.session.commit()
+        return jsonify({'message': f"Na-approve ang request — {req.sessions_granted} sessions na-grant kay {user.full_name}."})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error sa pag-approve ng subscription: {e}")
+        return jsonify({'error': 'May naganap na error sa pag-approve.'}), 500
+
+
+@app.route('/api/admin/subscriptions/<int:req_id>/reject', methods=['POST'])
+def admin_reject_subscription(req_id):
+    if not require_admin():
+        return jsonify({'error': 'Admin access only.'}), 403
+    try:
+        req = SubscriptionRequest.query.get(req_id)
+        if not req or req.status != 'pending':
+            return jsonify({'error': 'Hindi mahanap o hindi na pending ang request na ito.'}), 404
+        req.status = 'rejected'
+        req.reviewed_at = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+        db.session.commit()
+        return jsonify({'message': 'Na-reject ang subscription request.'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error sa pag-reject ng subscription: {e}")
+        return jsonify({'error': 'May naganap na error sa pag-reject.'}), 500
 
 
 @app.route('/api/support', methods=['GET'])
