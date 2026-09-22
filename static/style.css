@@ -168,6 +168,47 @@ button, input, select {
 .modal-backdrop.active .modal-card {
   transform: scale(1) translateY(0);
 }
+/* LANGUAGE PICKER MODAL + TOPBAR SWITCHER */
+.lang-modal-card { max-width: 380px; }
+.lang-modal-icon { font-size: 40px; margin-bottom: 6px; }
+.lang-choice-row { display: flex; gap: 12px; margin-top: 18px; }
+.lang-choice-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px;
+  border: 2px solid var(--border, #e2e2e2);
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink, #1f2a24);
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+.lang-choice-btn:hover { transform: translateY(-2px); border-color: var(--forest, #1F4D36); }
+.lang-choice-btn.selected { border-color: var(--forest, #1F4D36); background: var(--forest-tint, #e6f0ea); }
+.lang-choice-flag { font-size: 30px; line-height: 1; }
+.lang-pill {
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  background: var(--forest-tint);
+  color: var(--forest);
+  padding: 6px 10px;
+  border-radius: 999px;
+  transition: filter 0.15s ease;
+}
+/* Ang .topbar-user span selector (existing rule) ay generic descendant
+   selector na tumatama rin sa span na ito sa loob ng .lang-pill button —
+   kaya nire-reset dito para hindi mag-double ang pill background/padding. */
+.lang-pill span { background: none; padding: 0; border-radius: 0; color: inherit; }
+.lang-pill:hover { filter: brightness(0.95); }
+.admin-shell .lang-pill { background: var(--adm-panel-2); color: var(--adm-green); }
 .success-icon-wrap {
   width: 72px;
   height: 72px;
@@ -537,6 +578,22 @@ button, input, select {
 .stat-card--profit .stat-value { color: var(--gold-dark); }
 .stat-card--profit.negative .stat-value { color: var(--red); }
 .quick-actions { display: flex; gap: 12px; margin-bottom: 30px; flex-wrap: wrap; }
+.pending-pricing-banner { border-left: 4px solid var(--gold, #e8a33d); background: #fff8ec; }
+.pending-pricing-title { font-family: var(--font-display); font-size: 15.5px; font-weight: 700; color: #8a5a10; margin: 0 0 4px; }
+.pending-pricing-sub { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
+.pending-pricing-list { display: flex; flex-direction: column; gap: 8px; }
+.pending-pricing-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #f1dcb0;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.pending-pricing-item-name { font-weight: 700; font-size: 13.5px; color: var(--ink); }
+.pending-pricing-item-date { font-size: 12px; color: var(--muted); margin-left: 6px; }
 .subscription-banner { border-left: none; }
 .subscription-banner-title { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--ink); margin: 0 0 4px; }
 .subscription-banner-sub { font-size: 13.5px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
@@ -562,6 +619,7 @@ button, input, select {
 .admin-badge--approved { background: #E1F3E7; color: #1F7A43; }
 .admin-badge--rejected { background: #FBE3E1; color: #A23B34; }
 .admin-badge--open { background: #FFF3D6; color: #8A6D1D; }
+.sub-review-actions { display: flex; gap: 8px; margin-top: 10px; }
 .admin-badge--replied { background: #E1F3E7; color: #1F7A43; }
 
 /* ==================== CUSTOMER SERVICE (support tickets) ==================== */
