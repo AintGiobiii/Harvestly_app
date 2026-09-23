@@ -276,6 +276,22 @@ let currentActualIncome = 0;
 let activeViewTab = 'produce';
 let lastSavedType = 'produce'; // To handle dynamic modal buttons
 // ==================== MONTH HELPERS ====================
+// Converts a "YYYY-MM-DD" date string into a "YYYY-MM" month key used
+// for grouping records by month (reports, dropdown filters, caches).
+function getMonthKey(dateStr) {
+  if (!dateStr) return '';
+  return String(dateStr).slice(0, 7);
+}
+
+// Converts a "YYYY-MM" month key into a readable label, e.g. "September 2026".
+function getMonthLabel(monthKey) {
+  if (!monthKey) return '';
+  const [year, month] = monthKey.split('-').map(Number);
+  if (!year || !month) return monthKey;
+  const d = new Date(year, month - 1, 1);
+  return d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+}
+
 const productsByMonthCache = new Map();
 
 function rebuildProductsByMonthCache() {
