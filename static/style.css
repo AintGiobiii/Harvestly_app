@@ -595,6 +595,31 @@ button, input, select {
 .pending-pricing-item-name { font-weight: 700; font-size: 13.5px; color: var(--ink); }
 .pending-pricing-item-date { font-size: 12px; color: var(--muted); margin-left: 6px; }
 .subscription-banner { border-left: none; }
+.data-load-error-banner {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: #FBE3E1;
+  color: #7A2B24;
+  border: 1px solid #E8B4AE;
+  border-radius: var(--radius, 10px);
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  font-size: 13.5px;
+}
+.data-load-error-banner button {
+  flex-shrink: 0;
+  background: #A23B34;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.data-load-error-banner button:hover { background: #8A2F29; }
 .subscription-banner-title { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--ink); margin: 0 0 4px; }
 .subscription-banner-sub { font-size: 13.5px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
 #subscription-banner-locked .subscription-banner-title { color: var(--red); }
