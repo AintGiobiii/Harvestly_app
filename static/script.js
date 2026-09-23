@@ -1287,14 +1287,43 @@ currentRole = data.role || 'farmer';
       currentActualIncome = actualIncomeHistory.reduce((s, r) => s + (r.amount || 0), 0);
       updateDashboard();
       renderRecords();
+      renderReports();
       renderIncomeHistoryTable();
       renderIncomeMonitoringByProduct();
       initComputationDropdowns();
       updateSubscriptionUI();
+      hideDataLoadErrorBanner();
+    } else {
+      showDataLoadErrorBanner();
     }
   } catch (error) {
     console.error("Error loading data from backend:", error);
+    showDataLoadErrorBanner();
   }
+}
+// Kapag nabigo ang /api/data (hal. cold start ng free-tier hosting, o
+// network hiccup), ipinapakita ito nang malinaw sa halip na tahimik na
+// mananatiling walang laman ang Dashboard/Reports nang hindi alam ng user.
+function showDataLoadErrorBanner() {
+  let banner = document.getElementById('data-load-error-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'data-load-error-banner';
+    banner.className = 'data-load-error-banner';
+    banner.innerHTML = `
+      <span>Hindi na-load ang datos mo. Baka mabagal lang mag-wake up ang server — subukan ulit.</span>
+      <button type="button" id="btn-retry-data-load">Subukan Ulit</button>
+    `;
+    document.querySelector('.main')?.prepend(banner);
+    document.getElementById('btn-retry-data-load')?.addEventListener('click', () => {
+      fetchUserDataFromBackend();
+    });
+  }
+  banner.style.display = 'flex';
+}
+function hideDataLoadErrorBanner() {
+  const banner = document.getElementById('data-load-error-banner');
+  if (banner) banner.style.display = 'none';
 }
 // Populates dropdown list of products for the Computation & Comparison (per product) view
 function populateProductSelectDropdown() {
@@ -1442,6 +1471,14 @@ function navigateToScreen(targetScreen) {
   if (targetScreen === 'records') renderRecords();
   if (targetScreen === 'reports') renderReports();
   if (targetScreen === 'support') renderMySupportMessages();
+  // Dashboard at Reports: laging kumuha ng FRESH data mula backend sa bawat
+  // pagbisita dito, hindi lang umaasa sa huling naka-cache na `records` sa
+  // memory. Nililinis nito ang tsansang magkaiba ang makikita sa Dashboard/
+  // Reports kumpara sa View/Search kapag na-miss ang isang naunang fetch
+  // (hal. dahil sa cold start ng free-tier hosting).
+  if (targetScreen === 'dashboard' || targetScreen === 'reports') {
+    fetchUserDataFromBackend();
+  }
   if (targetScreen === 'subscribe') {
     loadGcashInfo();
     updateSubscribeStatusText();
