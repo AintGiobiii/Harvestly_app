@@ -197,6 +197,16 @@ document.querySelectorAll('.toggle-password-btn').forEach(btn => {
     }
   });
 });
+// Radio-pill visual state (fallback for browsers without :has() support)
+document.querySelectorAll('.radio-pill input[type="radio"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    const name = radio.name;
+    document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+      r.closest('.radio-pill')?.classList.toggle('is-checked', r.checked);
+    });
+  });
+  if (radio.checked) radio.closest('.radio-pill')?.classList.add('is-checked');
+});
 // Avatar picker (Register) — simple preset selection, no upload needed
 const avatarOptionBtns = document.querySelectorAll('.avatar-option');
 avatarOptionBtns.forEach(btn => {
@@ -225,24 +235,28 @@ function clearAuthFields() {
   if (formVerify) formVerify.reset();
   if (formForgot) formForgot.reset();
   if (formReset) formReset.reset();
-  const ids = ['login-identifier', 'login-password', 'signup-name', 'signup-username', 'signup-contact', 'signup-password', 'signup-confirm',
+  const ids = ['login-identifier', 'login-password',
+    'signup-lastname', 'signup-firstname', 'signup-middlename', 'signup-username', 'signup-contact',
+    'signup-verify-code', 'signup-password', 'signup-confirm',
     'verify-email', 'verify-code', 'forgot-email', 'reset-email', 'reset-code', 'reset-new-password', 'reset-confirm-password'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  const errIds = ['login-error', 'signup-error', 'verify-error', 'forgot-error', 'reset-error'];
+  const errIds = ['login-error', 'signup-error', 'verify-error', 'forgot-error', 'reset-error', 'eula-error'];
   errIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.hidden = true;
   });
-  const infoIds = ['login-info', 'verify-info', 'forgot-info', 'reset-info'];
+  const infoIds = ['login-info', 'signup-info', 'verify-info', 'forgot-info', 'reset-info'];
   infoIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.hidden = true;
   });
   const verifyEmailDisplay = document.getElementById('verify-email-display');
   if (verifyEmailDisplay) verifyEmailDisplay.textContent = '-';
+  const signupVerifyEmailDisplay = document.getElementById('signup-verify-email-display');
+  if (signupVerifyEmailDisplay) signupVerifyEmailDisplay.textContent = '-';
   const resetEmailDisplay = document.getElementById('reset-email-display');
   if (resetEmailDisplay) resetEmailDisplay.textContent = '-';
   const passInputs = ['login-password', 'signup-password', 'signup-confirm', 'reset-new-password', 'reset-confirm-password'];
@@ -252,6 +266,7 @@ function clearAuthFields() {
   });
   document.querySelectorAll('.toggle-password-btn').forEach(b => b.textContent = 'SHOW');
   resetAvatarPicker();
+  resetSignupWizard();
 }
 // Ipinapakita ang isang partikular na auth panel (login/signup/verify/forgot/reset)
 // at itinatago ang lahat ng iba pa. Ginagamit ng mga auth-switch-link (via
@@ -386,9 +401,71 @@ document.querySelectorAll('.auth-switch-link').forEach(btn => {
   btn.addEventListener('click', (e) => {
     const tab = e.target.dataset.tab;
     if (!tab) return;
+    // EULA GATE: bago makapasok sa Registration page, kailangang tanggapin
+    // muna ng (bagong) user ang End User License Agreement. Ipinapakita ang
+    // screen-eula sa halip na diretsong pumunta sa signup panel.
+    if (tab === 'signup') {
+      showEulaScreen();
+      return;
+    }
     showAuthPanel(tab);
   });
 });
+// ==================== EULA (End User License Agreement) ====================
+const screenEula = document.getElementById('screen-eula');
+const eulaAcceptCheckbox = document.getElementById('eula-accept-checkbox');
+const btnEulaAccept = document.getElementById('btn-eula-accept');
+const btnEulaDecline = document.getElementById('btn-eula-decline');
+const btnEulaBack = document.getElementById('btn-eula-back');
+function resetEulaScreen() {
+  if (eulaAcceptCheckbox) eulaAcceptCheckbox.checked = false;
+  if (btnEulaAccept) btnEulaAccept.disabled = true;
+  const eulaError = document.getElementById('eula-error');
+  if (eulaError) eulaError.hidden = true;
+}
+function showEulaScreen() {
+  resetEulaScreen();
+  screenAuth?.classList?.remove('active');
+  screenEula?.classList?.add('active');
+}
+function hideEulaScreen() {
+  screenEula?.classList?.remove('active');
+}
+if (eulaAcceptCheckbox) {
+  eulaAcceptCheckbox.addEventListener('change', () => {
+    if (btnEulaAccept) btnEulaAccept.disabled = !eulaAcceptCheckbox.checked;
+    const eulaError = document.getElementById('eula-error');
+    if (eulaError && eulaAcceptCheckbox.checked) eulaError.hidden = true;
+  });
+}
+if (btnEulaAccept) {
+  btnEulaAccept.addEventListener('click', () => {
+    if (!eulaAcceptCheckbox || !eulaAcceptCheckbox.checked) {
+      const eulaError = document.getElementById('eula-error');
+      if (eulaError) eulaError.hidden = false;
+      return;
+    }
+    hideEulaScreen();
+    screenAuth?.classList?.add('active');
+    clearAuthFields();
+    resetSignupWizard();
+    showAuthPanel('signup');
+  });
+}
+if (btnEulaDecline) {
+  btnEulaDecline.addEventListener('click', () => {
+    hideEulaScreen();
+    screenAuth?.classList?.add('active');
+    showAuthPanel('login');
+  });
+}
+if (btnEulaBack) {
+  btnEulaBack.addEventListener('click', () => {
+    hideEulaScreen();
+    screenAuth?.classList?.add('active');
+    showAuthPanel('login');
+  });
+}
 // ==================== AUTHENTICATION ====================
 const formLogin = document.getElementById('form-login');
 if (formLogin) {
@@ -430,59 +507,219 @@ if (formLogin) {
     }
   });
 }
+// ==================== MULTI-STEP REGISTRATION WIZARD ====================
+// Step 1: Last/First/Middle Name (client-side only, walang API call).
+// Step 2: Username + Email -> POST /api/signup (creates a pending account,
+//         sends OTP).
+// Step 3: Verification Code -> POST /api/verify-email (unlocks Step 4).
+// Step 4: Password (disabled hangga't hindi verified) -> POST
+//         /api/set-password (kino-complete ang account at nag-lo-login).
 const formSignup = document.getElementById('form-signup');
+const signupSteps = document.querySelectorAll('.signup-step');
+const signupStepDots = document.querySelectorAll('.step-dot');
+let signupCurrentStep = 1;
+let signupPendingEmail = ''; // email na ginamit sa kasalukuyang pending registration
+
+function goToSignupStep(stepNum) {
+  signupCurrentStep = stepNum;
+  signupSteps.forEach(panel => {
+    panel.classList.toggle('active', Number(panel.dataset.stepPanel) === stepNum);
+  });
+  signupStepDots.forEach(dot => {
+    const dotStep = Number(dot.dataset.stepDot);
+    dot.classList.toggle('active', dotStep === stepNum);
+    dot.classList.toggle('done', dotStep < stepNum);
+  });
+  const err = document.getElementById('signup-error');
+  if (err) err.hidden = true;
+}
+function resetSignupWizard() {
+  signupPendingEmail = '';
+  const pwInput = document.getElementById('signup-password');
+  const confirmInput = document.getElementById('signup-confirm');
+  const submitBtn = document.getElementById('btn-signup-submit');
+  if (pwInput) pwInput.disabled = true;
+  if (confirmInput) confirmInput.disabled = true;
+  if (submitBtn) submitBtn.disabled = true;
+  goToSignupStep(1);
+}
+
+// --- STEP 1 -> STEP 2 ---
+const btnSignupStep1Next = document.getElementById('btn-signup-step1-next');
+if (btnSignupStep1Next) {
+  btnSignupStep1Next.addEventListener('click', () => {
+    const lastName = document.getElementById('signup-lastname')?.value.trim() || '';
+    const firstName = document.getElementById('signup-firstname')?.value.trim() || '';
+    const err = document.getElementById('signup-error');
+    if (!lastName || !firstName) {
+      if (err) { err.textContent = 'Please enter your Last Name and First Name.'; err.hidden = false; }
+      return;
+    }
+    if (err) err.hidden = true;
+    goToSignupStep(2);
+  });
+}
+const btnSignupStep2Back = document.getElementById('btn-signup-step2-back');
+if (btnSignupStep2Back) {
+  btnSignupStep2Back.addEventListener('click', () => goToSignupStep(1));
+}
+
+// --- STEP 2 -> STEP 3 (sends the account to the backend + triggers OTP) ---
+const btnSignupStep2Next = document.getElementById('btn-signup-step2-next');
+if (btnSignupStep2Next) {
+  btnSignupStep2Next.addEventListener('click', async () => {
+    const lastName = document.getElementById('signup-lastname')?.value.trim() || '';
+    const firstName = document.getElementById('signup-firstname')?.value.trim() || '';
+    const middleName = document.getElementById('signup-middlename')?.value.trim() || '';
+    const userVal = document.getElementById('signup-username')?.value.trim() || '';
+    const contactVal = document.getElementById('signup-contact')?.value.trim() || '';
+    const err = document.getElementById('signup-error');
+    if (!userVal || !contactVal) {
+      if (err) { err.textContent = 'Please enter a username and email.'; err.hidden = false; }
+      return;
+    }
+    btnSignupStep2Next.disabled = true;
+    btnSignupStep2Next.textContent = 'Sending code…';
+    try {
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lastName, firstName, middleName,
+          username: userVal, contact: contactVal, avatar: selectedAvatar
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.requiresVerification) {
+        if (err) err.hidden = true;
+        signupPendingEmail = data.email || contactVal;
+        const emailDisplay = document.getElementById('signup-verify-email-display');
+        if (emailDisplay) emailDisplay.textContent = signupPendingEmail;
+        goToSignupStep(3);
+      } else {
+        if (err) { err.textContent = data.error || 'Registration failed.'; err.hidden = false; }
+      }
+    } catch (error) {
+      if (err) { err.textContent = 'Cannot connect to server.'; err.hidden = false; }
+    } finally {
+      btnSignupStep2Next.disabled = false;
+      btnSignupStep2Next.textContent = 'Next';
+    }
+  });
+}
+const btnSignupStep3Back = document.getElementById('btn-signup-step3-back');
+if (btnSignupStep3Back) {
+  btnSignupStep3Back.addEventListener('click', () => goToSignupStep(2));
+}
+
+// --- STEP 3 -> STEP 4 (verify OTP, then unlock the password fields) ---
+const btnSignupStep3Next = document.getElementById('btn-signup-step3-next');
+if (btnSignupStep3Next) {
+  btnSignupStep3Next.addEventListener('click', async () => {
+    const code = document.getElementById('signup-verify-code')?.value.trim() || '';
+    const err = document.getElementById('signup-error');
+    if (!code) {
+      if (err) { err.textContent = 'Please enter the verification code.'; err.hidden = false; }
+      return;
+    }
+    btnSignupStep3Next.disabled = true;
+    btnSignupStep3Next.textContent = 'Verifying…';
+    try {
+      const response = await fetch('/api/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: signupPendingEmail, code })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        if (err) err.hidden = true;
+        // Unlock Step 4's password fields, now that the email is verified.
+        const pwInput = document.getElementById('signup-password');
+        const confirmInput = document.getElementById('signup-confirm');
+        const submitBtn = document.getElementById('btn-signup-submit');
+        if (pwInput) pwInput.disabled = false;
+        if (confirmInput) confirmInput.disabled = false;
+        if (submitBtn) submitBtn.disabled = false;
+        goToSignupStep(4);
+      } else {
+        if (err) { err.textContent = data.error || 'Invalid or expired code.'; err.hidden = false; }
+      }
+    } catch (error) {
+      if (err) { err.textContent = 'Cannot connect to server.'; err.hidden = false; }
+    } finally {
+      btnSignupStep3Next.disabled = false;
+      btnSignupStep3Next.textContent = 'Verify';
+    }
+  });
+}
+const btnSignupResendCode = document.getElementById('btn-signup-resend-code');
+if (btnSignupResendCode) {
+  btnSignupResendCode.addEventListener('click', async () => {
+    const err = document.getElementById('signup-error');
+    const info = document.getElementById('signup-info');
+    if (!signupPendingEmail) return;
+    try {
+      const response = await fetch('/api/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: signupPendingEmail })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        if (err) err.hidden = true;
+        if (info) { info.textContent = data.message || 'A new code has been sent.'; info.hidden = false; }
+      } else {
+        if (info) info.hidden = true;
+        if (err) { err.textContent = data.error || 'Could not resend the code.'; err.hidden = false; }
+      }
+    } catch (error) {
+      if (err) { err.textContent = 'Cannot connect to server.'; err.hidden = false; }
+    }
+  });
+}
+
+// --- STEP 4: password validation + final submit ---
+// Alphanumeric (may titik AT numero) at hindi bababa sa 7 characters —
+// pareho itong client-side check (mabilis na feedback) at server-side check
+// (app.py PASSWORD_RE, ang tunay na pinagbabatayan).
+const SIGNUP_PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d).{7,}$/;
 if (formSignup) {
   formSignup.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = document.getElementById('signup-name')?.value.trim() || '';
-    const userVal = document.getElementById('signup-username')?.value.trim() || '';
-    const contactVal = document.getElementById('signup-contact')?.value.trim() || '';
     const passVal = document.getElementById('signup-password')?.value.trim() || '';
     const confirmVal = document.getElementById('signup-confirm')?.value.trim() || '';
     const err = document.getElementById('signup-error');
-    if (!name || !userVal || !contactVal || !passVal) {
-      if (err) { err.textContent = 'Please complete all fields.'; err.hidden = false; }
+    if (!passVal || !confirmVal) {
+      if (err) { err.textContent = 'Please complete both password fields.'; err.hidden = false; }
+      return;
+    }
+    if (!SIGNUP_PASSWORD_RE.test(passVal)) {
+      if (err) { err.textContent = 'Password must be alphanumeric (letters and numbers) and at least 7 characters long.'; err.hidden = false; }
       return;
     }
     if (passVal !== confirmVal) {
       if (err) { err.textContent = 'Passwords do not match.'; err.hidden = false; }
       return;
     }
+    const submitBtn = document.getElementById('btn-signup-submit');
+    if (submitBtn) submitBtn.disabled = true;
     try {
-      const response = await fetch('/api/signup', {
+      const response = await fetch('/api/set-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, username: userVal, contact: contactVal, password: passVal, avatar: selectedAvatar })
+        body: JSON.stringify({ email: signupPendingEmail, password: passVal })
       });
       const data = await response.json();
-      if (response.ok && data.requiresVerification) {
-        // Email ang ginamit sa Register — kailangan munang i-verify bago
-        // makapasok sa app. Ipinadala na ng backend ang code.
+      if (response.ok) {
         if (err) err.hidden = true;
-        const verifyEmailInput = document.getElementById('verify-email');
-        const verifyEmailDisplay = document.getElementById('verify-email-display');
-        const verifyInfo = document.getElementById('verify-info');
-        if (verifyEmailInput) verifyEmailInput.value = data.email || '';
-        if (verifyEmailDisplay) verifyEmailDisplay.textContent = data.email || '';
-        if (verifyInfo) { verifyInfo.textContent = 'Nagawa ang account! Ipinadala ang verification code sa email mo.'; verifyInfo.hidden = false; }
-        showAuthPanel('verify');
-      } else if (response.ok) {
-        currentUser = data.username;
-        currentAvatar = data.avatar || selectedAvatar;
-        if (err) err.hidden = true;
-        screenAuth?.classList?.remove('active');
-        appShell?.classList?.add('active');
-        const topbarUser = document.getElementById('topbar-username');
-        if (topbarUser) topbarUser.textContent = currentUser;
-        const topbarAvatar = document.getElementById('topbar-avatar');
-        if (topbarAvatar) topbarAvatar.textContent = currentAvatar;
-        initApp();
-        await fetchUserDataFromBackend();
+        await enterAppAfterAuth(data, { showTutorial: true });
       } else {
-        if (err) { err.textContent = data.error || 'Registration failed.'; err.hidden = false; }
+        if (err) { err.textContent = data.error || 'Could not create the account.'; err.hidden = false; }
       }
     } catch (error) {
       if (err) { err.textContent = 'Cannot connect to server.'; err.hidden = false; }
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 }
@@ -866,6 +1103,7 @@ if (formSupport) {
     if (okEl) okEl.hidden = true;
     const subject = subjectEl?.value.trim() || '';
     const message = messageEl?.value.trim() || '';
+    const isAnonymous = document.getElementById('support-visibility-anon')?.checked || false;
     if (!message) {
       if (errEl) { errEl.textContent = 'Kailangan ng mensahe.'; errEl.hidden = false; }
       return;
@@ -874,7 +1112,7 @@ if (formSupport) {
       const res = await fetch('/api/support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, message })
+        body: JSON.stringify({ subject, message, isAnonymous })
       });
       const data = await res.json();
       if (res.ok) {
@@ -962,9 +1200,12 @@ async function renderAdminSupportMessages() {
              <textarea placeholder="I-type ang reply mo dito..." required></textarea>
              <button type="submit" class="btn btn-primary btn-sm">Send reply</button>
            </form>`;
+      const submitterLabel = m.isAnonymous
+        ? '<span class="support-anon-badge">Anonymous</span>'
+        : `${escapeHtml(m.fullName)} (${escapeHtml(m.username)})`;
       item.innerHTML = `
         <div class="support-item-head">
-          <span class="support-item-subject">${escapeHtml(m.subject || 'Concern')} <span class="empty-state" style="padding:0;">— ${escapeHtml(m.fullName)} (${escapeHtml(m.username)})</span></span>
+          <span class="support-item-subject">${escapeHtml(m.subject || 'Concern')} <span class="empty-state" style="padding:0;">— ${submitterLabel}</span></span>
           <span class="admin-badge ${badgeClass}">${badgeLabel}</span>
         </div>
         <p class="support-item-meta">${escapeHtml(m.createdAt)}</p>
