@@ -509,6 +509,86 @@ button, input, select {
   border-radius: 8px;
   margin-bottom: 14px;
 }
+.field-hint {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 6px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+}
+/* MULTI-STEP REGISTRATION WIZARD */
+.signup-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 20px;
+}
+.step-dot {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--paper); border: 1.5px solid var(--border);
+  color: var(--muted); font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.step-dot.active { background: var(--forest); border-color: var(--forest); color: #fff; }
+.step-dot.done { background: var(--forest-tint); border-color: var(--forest); color: var(--forest); }
+.step-line { width: 20px; height: 2px; background: var(--border); flex-shrink: 0; }
+.signup-step { display: none; }
+.signup-step.active { display: block; }
+.signup-step-actions { display: flex; gap: 10px; margin-top: 4px; }
+.signup-step-actions .btn-secondary { flex: 0 0 auto; padding-left: 18px; padding-right: 18px; }
+.signup-step-actions .btn-primary { flex: 1; }
+/* EULA SCREEN */
+.eula-sub { font-size: 13.5px; color: var(--muted); line-height: 1.5; margin: 0 0 14px; text-align: center; }
+.eula-text-box {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--paper);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.eula-text-box h3 { font-family: var(--font-display); font-size: 14px; color: var(--forest); margin: 14px 0 6px; }
+.eula-text-box h3:first-child { margin-top: 0; }
+.eula-text-box p { font-size: 13px; line-height: 1.6; color: var(--ink); margin: 0 0 4px; }
+.eula-accept-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.4;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+.eula-accept-row input[type="checkbox"] {
+  width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0;
+  accent-color: var(--forest); cursor: pointer;
+}
+#screen-eula .modal-actions { display: flex; gap: 10px; }
+#screen-eula .modal-actions .btn { flex: 1; }
+/* CUSTOMER SERVICE: Anonymous / With Details toggle */
+.support-visibility-field { margin-bottom: 18px; }
+.support-visibility-toggle { display: flex; gap: 10px; flex-wrap: wrap; }
+.radio-pill {
+  display: flex; align-items: center; gap: 8px;
+  border: 1.5px solid var(--border); border-radius: 999px;
+  padding: 9px 16px; cursor: pointer; font-size: 13px; font-weight: 600;
+  color: var(--muted); background: #fff;
+  transition: border-color .12s ease, color .12s ease, background .12s ease;
+}
+.radio-pill input[type="radio"] { accent-color: var(--forest); width: 16px; height: 16px; cursor: pointer; }
+.radio-pill:has(input:checked) { border-color: var(--forest); color: var(--forest); background: var(--forest-tint); }
+.radio-pill.is-checked { border-color: var(--forest); color: var(--forest); background: var(--forest-tint); }
+.support-anon-badge {
+  display: inline-block; background: var(--forest-tint); color: var(--forest);
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  padding: 2px 8px; border-radius: 999px;
+}
 /* APP SHELL */
 .app-shell { display: none; min-height: 100vh; }
 .app-shell.active { display: flex; }
@@ -1159,6 +1239,13 @@ button, input, select {
   .screen-bottom-bar { padding: 14px 12px calc(14px + env(safe-area-inset-bottom, 0px)); }
   .avatar-option { width: 40px; height: 40px; font-size: 18px; }
   .avatar-picker { gap: 8px; }
+  .eula-text-box { max-height: 220px; padding: 12px 13px; }
+  .step-line { width: 12px; }
+  .step-dot { width: 23px; height: 23px; font-size: 11px; }
+  .signup-step-actions { flex-direction: column-reverse; }
+  .signup-step-actions .btn-secondary { width: 100%; }
+  .support-visibility-toggle { flex-direction: column; }
+  .radio-pill { justify-content: center; }
 }
 @media (max-width: 360px) {
   .about-us-btn { font-size: 11.5px; padding: 8px 14px; }
