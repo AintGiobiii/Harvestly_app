@@ -320,7 +320,7 @@
             <button type="button" class="auth-switch-link" data-tab="forgot" data-i18n="auth.forgotPassword">Forgot password?</button>
           </p>
           <button type="submit" class="btn btn-primary btn-block" data-i18n="auth.logIn">Log in</button>
-          <p class="auth-switch-prompt"><span data-i18n="auth.noAccount">Don't have an account?</span> <button type="button" class="auth-switch-link" data-tab="signup" data-i18n="auth.registerHere">Register here</button></p>
+          <p class="auth-switch-prompt"><span data-i18n="auth.noAccount">Don't have an account?</span> <button type="button" id="btn-goto-signup" class="auth-switch-link" data-tab="signup" data-i18n="auth.registerHere">Register here</button></p>
         </form>
         <!-- EMAIL VERIFICATION PANEL (after signup with email, or when login blocked pending verification) -->
         <form id="form-verify" class="auth-form" data-panel="verify" novalidate>
@@ -376,49 +376,104 @@
           <p class="auth-switch-prompt"><button type="button" class="auth-switch-link" data-tab="login">Back to Log in</button></p>
         </form>
         <form id="form-signup" class="auth-form" data-panel="signup" novalidate>
+          <!-- STEP INDICATOR -->
+          <div class="signup-steps" id="signup-steps" aria-hidden="true">
+            <span class="step-dot active" data-step-dot="1">1</span>
+            <span class="step-line"></span>
+            <span class="step-dot" data-step-dot="2">2</span>
+            <span class="step-line"></span>
+            <span class="step-dot" data-step-dot="3">3</span>
+            <span class="step-line"></span>
+            <span class="step-dot" data-step-dot="4">4</span>
+          </div>
           <p class="field-error" id="signup-error" hidden></p>
-          <label class="field">
-            <span>Full name</span>
-            <input type="text" id="signup-name" required>
-          </label>
-          <label class="field">
-            <span>Username</span>
-            <input type="text" id="signup-username" required>
-          </label>
-          <label class="field">
-            <span>Email</span>
-            <input type="email" id="signup-contact" autocomplete="email" placeholder="e.g. juan@email.com" required>
-          </label>
-          <label class="field">
-            <span>Password</span>
-            <div class="password-field-wrap">
-              <input type="password" id="signup-password" minlength="6" required>
-              <button type="button" class="toggle-password-btn" data-target="signup-password" aria-label="Show or hide password">SHOW</button>
+          <p class="field-success" id="signup-info" hidden></p>
+
+          <!-- STEP 1: PERSONAL INFORMATION -->
+          <div class="signup-step active" data-step-panel="1">
+            <p class="auth-panel-desc">Step 1 of 4 — Personal Information</p>
+            <label class="field">
+              <span>Last Name</span>
+              <input type="text" id="signup-lastname" autocomplete="family-name" required>
+            </label>
+            <label class="field">
+              <span>First Name</span>
+              <input type="text" id="signup-firstname" autocomplete="given-name" required>
+            </label>
+            <label class="field">
+              <span>Middle Name</span>
+              <input type="text" id="signup-middlename" autocomplete="additional-name" placeholder="Optional">
+            </label>
+            <button type="button" id="btn-signup-step1-next" class="btn btn-primary btn-block">Next</button>
+            <p class="auth-switch-prompt">Already have an account? <button type="button" class="auth-switch-link" data-tab="login">Log in here</button></p>
+          </div>
+
+          <!-- STEP 2: ACCOUNT DETAILS -->
+          <div class="signup-step" data-step-panel="2">
+            <p class="auth-panel-desc">Step 2 of 4 — Account Details</p>
+            <label class="field">
+              <span>Username</span>
+              <input type="text" id="signup-username" required>
+            </label>
+            <label class="field">
+              <span>Email</span>
+              <input type="email" id="signup-contact" autocomplete="email" placeholder="e.g. juan@email.com" required>
+            </label>
+            <div class="field">
+              <span>Choose an avatar</span>
+              <div class="avatar-picker" id="avatar-picker" role="group" aria-label="Choose an avatar">
+                <button type="button" class="avatar-option selected" data-avatar="🌾" aria-pressed="true">🌾</button>
+                <button type="button" class="avatar-option" data-avatar="🌽" aria-pressed="false">🌽</button>
+                <button type="button" class="avatar-option" data-avatar="🍅" aria-pressed="false">🍅</button>
+                <button type="button" class="avatar-option" data-avatar="🥕" aria-pressed="false">🥕</button>
+                <button type="button" class="avatar-option" data-avatar="🍓" aria-pressed="false">🍓</button>
+                <button type="button" class="avatar-option" data-avatar="🐄" aria-pressed="false">🐄</button>
+                <button type="button" class="avatar-option" data-avatar="🐓" aria-pressed="false">🐓</button>
+                <button type="button" class="avatar-option" data-avatar="👩‍🌾" aria-pressed="false">👩‍🌾</button>
+                <button type="button" class="avatar-option" data-avatar="👨‍🌾" aria-pressed="false">👨‍🌾</button>
+              </div>
             </div>
-          </label>
-          <label class="field">
-            <span>Confirm password</span>
-            <div class="password-field-wrap">
-              <input type="password" id="signup-confirm" required>
-              <button type="button" class="toggle-password-btn" data-target="signup-confirm" aria-label="Show or hide password">SHOW</button>
-            </div>
-          </label>
-          <div class="field">
-            <span>Choose an avatar</span>
-            <div class="avatar-picker" id="avatar-picker" role="group" aria-label="Choose an avatar">
-              <button type="button" class="avatar-option selected" data-avatar="🌾" aria-pressed="true">🌾</button>
-              <button type="button" class="avatar-option" data-avatar="🌽" aria-pressed="false">🌽</button>
-              <button type="button" class="avatar-option" data-avatar="🍅" aria-pressed="false">🍅</button>
-              <button type="button" class="avatar-option" data-avatar="🥕" aria-pressed="false">🥕</button>
-              <button type="button" class="avatar-option" data-avatar="🍓" aria-pressed="false">🍓</button>
-              <button type="button" class="avatar-option" data-avatar="🐄" aria-pressed="false">🐄</button>
-              <button type="button" class="avatar-option" data-avatar="🐓" aria-pressed="false">🐓</button>
-              <button type="button" class="avatar-option" data-avatar="👩‍🌾" aria-pressed="false">👩‍🌾</button>
-              <button type="button" class="avatar-option" data-avatar="👨‍🌾" aria-pressed="false">👨‍🌾</button>
+            <p class="pricing-guide-note">Sa pag-tap ng Next, magpapadala kami ng verification code sa email na inilagay mo.</p>
+            <div class="signup-step-actions">
+              <button type="button" id="btn-signup-step2-back" class="btn btn-secondary">Back</button>
+              <button type="button" id="btn-signup-step2-next" class="btn btn-primary">Next</button>
             </div>
           </div>
-          <button type="submit" class="btn btn-primary btn-block">Create account</button>
-          <p class="auth-switch-prompt">Already have an account? <button type="button" class="auth-switch-link" data-tab="login">Log in here</button></p>
+
+          <!-- STEP 3: EMAIL VERIFICATION -->
+          <div class="signup-step" data-step-panel="3">
+            <p class="auth-panel-desc">Step 3 of 4 — Email Verification. Nagpadala kami ng 6-digit na code sa <strong id="signup-verify-email-display">-</strong>.</p>
+            <label class="field">
+              <span>Verification Code</span>
+              <input type="text" id="signup-verify-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+            </label>
+            <p class="auth-switch-prompt">Hindi natanggap ang code? <button type="button" class="auth-switch-link" id="btn-signup-resend-code">Resend code</button></p>
+            <div class="signup-step-actions">
+              <button type="button" id="btn-signup-step3-back" class="btn btn-secondary">Back</button>
+              <button type="button" id="btn-signup-step3-next" class="btn btn-primary">Verify</button>
+            </div>
+          </div>
+
+          <!-- STEP 4: PASSWORD SETUP (locked/disabled hangga't hindi na-verify ang email sa Step 3) -->
+          <div class="signup-step" data-step-panel="4">
+            <p class="auth-panel-desc">Step 4 of 4 — Password Setup</p>
+            <label class="field">
+              <span>Password</span>
+              <div class="password-field-wrap">
+                <input type="password" id="signup-password" autocomplete="new-password" disabled required>
+                <button type="button" class="toggle-password-btn" data-target="signup-password" aria-label="Show or hide password">SHOW</button>
+              </div>
+              <span class="field-hint">Alphanumeric (may titik at numero), hindi bababa sa 7 characters.</span>
+            </label>
+            <label class="field">
+              <span>Confirm password</span>
+              <div class="password-field-wrap">
+                <input type="password" id="signup-confirm" autocomplete="new-password" disabled required>
+                <button type="button" class="toggle-password-btn" data-target="signup-confirm" aria-label="Show or hide password">SHOW</button>
+              </div>
+            </label>
+            <button type="submit" id="btn-signup-submit" class="btn btn-primary btn-block" disabled>Create account</button>
+          </div>
         </form>
       </div>
     </div>
@@ -455,6 +510,48 @@
         <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
         Bumalik sa Log in / Register
       </button>
+    </div>
+  </section>
+  <!-- EULA SCREEN (lalabas lang para sa BAGONG users, kaagad pagkatapos ng
+       welcome/splash screen at BAGO ang User Registration page. Kailangang
+       tanggapin ito bago makapagpatuloy sa pagre-register.) -->
+  <section id="screen-eula" class="screen screen--auth">
+    <div class="auth-farmbg" aria-hidden="true">
+      <img src="{{ url_for('static', filename='cornfield1.png') }}" alt="Cornfield 1" class="cornfield-bg-img pic-1 active-slide">
+      <img src="{{ url_for('static', filename='cornfield2.png') }}" alt="Cornfield 2" class="cornfield-bg-img pic-2">
+    </div>
+    <button type="button" id="btn-eula-back" class="about-back-btn" aria-label="Bumalik sa Log in">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+      <span>Back</span>
+    </button>
+    <div class="auth-wrap">
+      <div class="auth-card about-card">
+        <h1 class="about-title">End User License Agreement</h1>
+        <p class="eula-sub">Basahin at tanggapin muna ang kasunduang ito bago gumawa ng bagong account sa Harvestly.</p>
+        <div class="eula-text-box" id="eula-text-box" tabindex="0">
+          <h3>1. Pagtanggap sa Kasunduan</h3>
+          <p>Sa paggawa ng account at paggamit ng Harvestly, sumasang-ayon kang sundin ang mga tuntunin na nakasaad dito. Kung hindi ka sumasang-ayon, huwag magpatuloy sa pagre-register.</p>
+          <h3>2. Paggamit ng App</h3>
+          <p>Ang Harvestly ay isang digital record-keeping tool para sa pagsubaybay ng produce, gastos, at kita ng iyong sakahan. Ikaw ang responsable sa kawastuhan ng mga datos na iyong ilalagay.</p>
+          <h3>3. Account &amp; Seguridad</h3>
+          <p>Ikaw ang responsable sa pagpapanatili ng kumpidensyal na password mo. Ipagbigay-alam agad sa amin kung may hindi awtorisadong paggamit ng iyong account.</p>
+          <h3>4. Privacy</h3>
+          <p>Ang mga personal na impormasyong ibibigay mo (pangalan, email) ay gagamitin lamang para sa pagpapatakbo ng iyong account at hindi ipagbibili sa mga third party.</p>
+          <h3>5. Mga Bayarin</h3>
+          <p>Ang ilang feature ng app (hal. karagdagang sessions) ay maaaring may kaakibat na bayad, gaya ng nakasaad sa Subscription section ng app.</p>
+          <h3>6. Pagbabago sa Kasunduan</h3>
+          <p>Maaaring i-update ang kasunduang ito paminsan-minsan. Ang patuloy na paggamit ng app pagkatapos ng anumang pagbabago ay nangangahulugang tinatanggap mo ang mga bagong tuntunin.</p>
+        </div>
+        <label class="eula-accept-row">
+          <input type="checkbox" id="eula-accept-checkbox">
+          <span>Nabasa at tinatanggap ko ang End User License Agreement na ito.</span>
+        </label>
+        <p class="field-error" id="eula-error" hidden>Kailangan mo munang tanggapin ang EULA bago magpatuloy.</p>
+        <div class="modal-actions">
+          <button type="button" id="btn-eula-decline" class="btn btn-secondary btn-block">Decline</button>
+          <button type="button" id="btn-eula-accept" class="btn btn-primary btn-block" disabled>I Agree — Continue to Registration</button>
+        </div>
+      </div>
     </div>
   </section>
   <!-- ONBOARDING TUTORIAL (lalabas lang isang beses, pagkatapos mag-register) -->
@@ -853,6 +950,19 @@
             <h2>Send a concern</h2>
           </div>
           <form id="form-support">
+            <div class="field support-visibility-field">
+              <span>Send this message as</span>
+              <div class="support-visibility-toggle" role="radiogroup" aria-label="Send message as">
+                <label class="radio-pill">
+                  <input type="radio" name="support-visibility" id="support-visibility-details" value="details" checked>
+                  <span>With My Details</span>
+                </label>
+                <label class="radio-pill">
+                  <input type="radio" name="support-visibility" id="support-visibility-anon" value="anonymous">
+                  <span>Anonymous</span>
+                </label>
+              </div>
+            </div>
             <label class="field">
               <span>Subject (optional)</span>
               <input type="text" id="support-subject" maxlength="150" placeholder="hal. Tungkol sa subscription ko">
