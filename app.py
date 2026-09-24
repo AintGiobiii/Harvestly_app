@@ -175,16 +175,34 @@ def send_reset_email(user):
 
 
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+# STEP 4 (Password Setup) validation: dapat may kahit isang letra AT isang
+# numero (alphanumeric), hindi bababa sa 7 characters ang haba.
+PASSWORD_RE = re.compile(r'^(?=.*[A-Za-z])(?=.*\d).{7,}$')
 ALLOWED_AVATARS = ['🌾', '🌽', '🍅', '🥕', '🍓', '🐄', '🐓', '👩\u200d🌾', '👨\u200d🌾']
 DEFAULT_AVATAR = ALLOWED_AVATARS[0]
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(100), nullable=False)
+    # STEP-BY-STEP REGISTRATION: hiwalay na fields para sa Last / First / Middle
+    # name (dating iisang "Full Name" field lang). Pinapanatili pa rin ang
+    # full_name bilang computed/combined display value para hindi masira ang
+    # ibang bahagi ng app (emails, greetings, admin tables, atbp.) na gumagamit
+    # nito.
+    last_name = db.Column(db.String(100), nullable=True)
+    first_name = db.Column(db.String(100), nullable=True)
+    middle_name = db.Column(db.String(100), nullable=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=True)
     avatar = db.Column(db.String(10), nullable=False, default=DEFAULT_AVATAR)
+    # Sa bagong multi-step na pagpaparehistro, may placeholder/hindi
+    # nagagamit na hash muna ang password_hash bago maabot ang Step 4 (Password
+    # Setup) — ang password_set flag ang eksaktong nagsasabi kung kumpleto na
+    # ang account (na-set na ng user ang tunay na password) at pwede nang
+    # gamitin sa pag-login. Iniwan ang password_hash bilang NOT NULL para
+    # hindi kailangan ng mapanganib na ALTER COLUMN sa existing SQLite table.
     password_hash = db.Column(db.String(255), nullable=False)
+    password_set = db.Column(db.Boolean, nullable=False, default=False)
     role = db.Column(db.String(20), nullable=False, default='farmer')  
     email_verified = db.Column(db.Boolean, nullable=False, default=False)
     verification_code = db.Column(db.String(10), nullable=True)
@@ -253,6 +271,11 @@ class SupportMessage(db.Model):
     admin_reply = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.String(30), nullable=False)
     replied_at = db.Column(db.String(30), nullable=True)
+    # CUSTOMER SERVICE: kapag True, hindi ipinapakita ang pangalan/username ng
+    # user sa Admin dashboard para sa message na ito — user_id lang ang
+    # nananatili sa likod (para may thread pa rin, hindi totally anonymous sa
+    # DB level) pero "Anonymous" ang lalabas sa admin support list.
+    is_anonymous = db.Column(db.Boolean, nullable=False, default=False)
 
 class RateLimitEntry(db.Model):
     """Database-backed na counter para sa login lockouts at verification
@@ -307,6 +330,13 @@ def run_safe_migrations():
                         conn.execute(text("ALTER TABLE subscription_request ADD COLUMN sessions_granted INTEGER"))
                         conn.commit()
                     print("Migration: added 'sessions_granted' column to subscription_request.")
+            if 'support_message' in table_names:
+                support_columns = [c['name'] for c in inspector.get_columns('support_message')]
+                if 'is_anonymous' not in support_columns:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE support_message ADD COLUMN is_anonymous BOOLEAN NOT NULL DEFAULT FALSE"))
+                        conn.commit()
+                    print("Migration: added 'is_anonymous' column to support_message.")
             if 'user' in table_names:
                 user_columns = [c['name'] for c in inspector.get_columns('user')]
 
@@ -332,6 +362,15 @@ def run_safe_migrations():
                     'purchased_cycles': "ALTER TABLE \"user\" ADD COLUMN purchased_cycles INTEGER NOT NULL DEFAULT 0",
                     'language': "ALTER TABLE \"user\" ADD COLUMN language VARCHAR(5) NOT NULL DEFAULT 'en'",
                     'language_set': "ALTER TABLE \"user\" ADD COLUMN language_set BOOLEAN NOT NULL DEFAULT FALSE",
+                    # MULTI-STEP REGISTRATION: hiwalay na name fields + flag na
+                    # nagsasabi kung na-set na ng user ang tunay niyang password
+                    # (Step 4). Ang mga existing account (dati nang may password)
+                    # ay ginagawang password_set=TRUE sa ibaba, pagkatapos ng
+                    # column add, para hindi sila ma-lock out sa pag-login.
+                    'last_name': "ALTER TABLE \"user\" ADD COLUMN last_name VARCHAR(100)",
+                    'first_name': "ALTER TABLE \"user\" ADD COLUMN first_name VARCHAR(100)",
+                    'middle_name': "ALTER TABLE \"user\" ADD COLUMN middle_name VARCHAR(100)",
+                    'password_set': "ALTER TABLE \"user\" ADD COLUMN password_set BOOLEAN NOT NULL DEFAULT FALSE",
                 }
                 # RESILIENCE FIX: dati, iisang connection/transaction lang ang
                 # ginagamit para sa LAHAT ng column additions sa loop na ito —
@@ -340,6 +379,7 @@ def run_safe_migrations():
                 # rollback ang LAHAT ng kasamang migrations nang tahimik, kahit
                 # tama naman sila. Ngayon, hiwalay na connection/transaction
                 # ang bawat column para hindi sila magkabuntutan.
+                password_set_was_missing = 'password_set' not in user_columns
                 for col, stmt in user_migrations.items():
                     if col not in user_columns:
                         try:
@@ -349,6 +389,18 @@ def run_safe_migrations():
                             print(f"Migration: added '{col}' column to user.")
                         except Exception as col_err:
                             print(f"Migration FAILED for column '{col}': {col_err}")
+                # BACKFILL: lahat ng account na gumawa na bago dumating ang
+                # multi-step registration ay may tunay na password na — i-mark
+                # sila bilang password_set=TRUE para hindi sila ma-lock out sa
+                # pag-login (default ng bagong column ay FALSE).
+                if password_set_was_missing:
+                    try:
+                        with db.engine.connect() as conn:
+                            conn.execute(text('UPDATE "user" SET password_set = TRUE'))
+                            conn.commit()
+                        print("Migration: backfilled password_set=TRUE for existing users.")
+                    except Exception as backfill_err:
+                        print(f"Migration backfill FAILED for password_set: {backfill_err}")
         except Exception as e:
             print(f"Migration check skipped: {e}")
 run_safe_migrations()
@@ -363,10 +415,13 @@ def ensure_default_admin():
             hashed_pw = bcrypt.generate_password_hash(admin_password).decode('utf-8')
             admin = User(
                 full_name='System Admin',
+                last_name='Admin',
+                first_name='System',
                 username=admin_username,
                 email=admin_email,
                 avatar=DEFAULT_AVATAR,
                 password_hash=hashed_pw,
+                password_set=True,
                 role='admin',
                 subscription_status='active',
                 email_verified=True  
@@ -492,36 +547,83 @@ def home():
 
 @app.route('/api/signup', methods=['POST'])
 def signup():
+    """MULTI-STEP REGISTRATION — Step 1 (Last/First/Middle name) + Step 2
+    (Username/Email) submitted together mula sa frontend wizard. Wala pang
+    password dito — ginagawa lang nitong 'pending' na account (email_verified
+    = False, password_set = False) at nagpapadala ng OTP verification code.
+    Ang tunay na password ay itatakda pa lang sa /api/set-password, pagkatapos
+    ma-verify ang email (Step 3) — Step 4 sa spec.
+
+    Kung pumindot ang user ng "Back" mula Step 3 papunta Step 2 (hal. para
+    ayusin ang na-type na email) at nag-submit ulit, ire-reuse/ia-update na
+    lang ang parehong pending record sa halip na tanggihan dahil "taken na"
+    ang sarili niyang lumang username/email.
+    """
     try:
         data = request.json or {}
+        last_name = (data.get('lastName') or '').strip()
+        first_name = (data.get('firstName') or '').strip()
+        middle_name = (data.get('middleName') or '').strip()
         username = (data.get('username') or '').strip()
-        password = data.get('password', '')
         contact = (data.get('contact') or '').strip()
         avatar = (data.get('avatar') or '').strip()
         if avatar not in ALLOWED_AVATARS:
             avatar = DEFAULT_AVATAR
-        if not username or not password:
-            return jsonify({'error': 'Kailangan ng username at password.'}), 400
-        if len(password) < 6:
-            return jsonify({'error': 'Dapat hindi bababa sa 6 characters ang password.'}), 400
+        if not last_name or not first_name:
+            return jsonify({'error': 'Kailangan ng Last Name at First Name.'}), 400
+        if not username:
+            return jsonify({'error': 'Kailangan ng username.'}), 400
         if not contact:
             return jsonify({'error': 'Kailangan ng email para sa pagpaparehistro.'}), 400
         if not EMAIL_RE.match(contact):
             return jsonify({'error': 'Hindi valid ang email address.'}), 400
         email_val = contact.lower()
 
-        if User.query.filter_by(username=username).first():
+        existing_username = User.query.filter_by(username=username).first()
+        existing_email = User.query.filter_by(email=email_val).first()
+        # Pending record ba ito galing sa parehong hindi pa natatapos na
+        # pagre-register (walang na-set na password pa)? Kung oo, at iisa
+        # lang ang tumutugmang record sa parehong username at email (o wala
+        # pang email), i-a-update na lang ito sa halip na tumanggi.
+        pending_reuse = None
+        if existing_username and not existing_username.password_set and not existing_username.email_verified:
+            if existing_email is None or existing_email.id == existing_username.id:
+                pending_reuse = existing_username
+        if existing_username and pending_reuse is None:
             return jsonify({'error': 'Ang username na ito ay ginagamit na.'}), 400
-        if User.query.filter_by(email=email_val).first():
+        if existing_email and (pending_reuse is None or existing_email.id != pending_reuse.id):
             return jsonify({'error': 'May account na gumagamit na ng email na ito.'}), 400
 
-        hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
+        full_name = ' '.join(p for p in [first_name, middle_name, last_name] if p)
+
+        if pending_reuse:
+            pending_reuse.full_name = full_name
+            pending_reuse.last_name = last_name
+            pending_reuse.first_name = first_name
+            pending_reuse.middle_name = middle_name or None
+            pending_reuse.email = email_val
+            pending_reuse.avatar = avatar
+            send_verification_email(pending_reuse)
+            db.session.commit()
+            return jsonify({
+                'message': 'Ipinadala ang verification code sa email mo.',
+                'requiresVerification': True,
+                'email': email_val
+            })
+
+        # Placeholder na password hash lang — hindi pa ito magagamit para
+        # makapag-login hangga't hindi True ang password_set (Step 4).
+        placeholder_hash = bcrypt.generate_password_hash(secrets.token_urlsafe(24)).decode('utf-8')
         new_user = User(
-            full_name=data.get('name', 'User'),
+            full_name=full_name or 'User',
+            last_name=last_name,
+            first_name=first_name,
+            middle_name=middle_name or None,
             username=username,
             email=email_val,
             avatar=avatar,
-            password_hash=hashed_pw,
+            password_hash=placeholder_hash,
+            password_set=False,
             role='farmer',
             email_verified=False
         )
@@ -530,7 +632,7 @@ def signup():
         send_verification_email(new_user)
         db.session.commit()
         return jsonify({
-            'message': 'Nagawa ang account! Ipinadala ang verification code sa email mo.',
+            'message': 'Ipinadala ang verification code sa email mo.',
             'requiresVerification': True,
             'email': email_val
         })
@@ -550,6 +652,13 @@ def login():
         user = None
         if identifier:
             user = User.query.filter_by(email=identifier.lower()).first()
+        if user and not user.password_set:
+            # Naiwan sa gitna ng multi-step registration (hal. na-verify na
+            # ang email pero hindi pa na-set ang password, Step 4). Walang
+            # magagawang tumugmang password dito, pero tinatahasan ang error
+            # message para malinaw sa user kung ano ang susunod na hakbang.
+            register_failed_login(ip)
+            return jsonify({'error': 'Hindi pa tapos ang pagre-register ng account na ito. Pakitapos ang Step 4 (Password Setup).'}), 401
         if user and bcrypt.check_password_hash(user.password_hash, data.get('password', '')):
             if user.email and not user.email_verified:
                 if not user.verification_code or is_code_expired(user.verification_code_expires):
@@ -634,6 +743,11 @@ def verify_email():
         user.verification_code = None
         user.verification_code_expires = None
         db.session.commit()
+        if not user.password_set:
+            # BAGONG MULTI-STEP REGISTRATION FLOW: huwag pang gawing logged-in
+            # — kailangan munang itakda ng user ang password niya (Step 4) sa
+            # pamamagitan ng /api/set-password bago siya makapasok sa app.
+            return jsonify({'message': 'Na-verify na ang email mo! Itakda na ngayon ang password mo.', 'requiresPassword': True})
         session['user_id'] = user.id
         session['username'] = user.full_name
         session['role'] = user.role
@@ -642,6 +756,42 @@ def verify_email():
         db.session.rollback()
         print(f"Error sa email verification: {e}")
         return jsonify({'error': 'May naganap na error sa pag-verify.'}), 500
+
+@app.route('/api/set-password', methods=['POST'])
+def set_password():
+    """MULTI-STEP REGISTRATION — Step 4 (Password Setup). Tinatawag pagkatapos
+    matagumpay na ma-verify ang email (Step 3). Kailangang alphanumeric
+    (letters AT numbers) at hindi bababa sa 7 characters ang password, gaya
+    ng hinihingi ng spec. Pagkatapos itakda ang password, tapos na ang
+    registration at direktang naka-login na ang user."""
+    try:
+        data = request.json or {}
+        email_val = (data.get('email') or '').strip().lower()
+        password = data.get('password', '')
+        if not email_val:
+            return jsonify({'error': 'Kailangan ng email.'}), 400
+        user = User.query.filter_by(email=email_val).first()
+        if not user:
+            return jsonify({'error': 'Hindi mahanap ang account na ito.'}), 404
+        if not user.email_verified:
+            return jsonify({'error': 'Kailangan munang i-verify ang email bago itakda ang password.'}), 400
+        if user.password_set:
+            return jsonify({'error': 'May password na ang account na ito. Mag-login na lang.'}), 400
+        if len(password) < 7:
+            return jsonify({'error': 'Dapat hindi bababa sa 7 characters ang password.'}), 400
+        if not PASSWORD_RE.match(password):
+            return jsonify({'error': 'Dapat may titik at numero ang password (alphanumeric).'}), 400
+        user.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+        user.password_set = True
+        db.session.commit()
+        session['user_id'] = user.id
+        session['username'] = user.full_name
+        session['role'] = user.role
+        return jsonify({'message': 'Nagawa ang account mo!', 'username': user.full_name, 'role': user.role, 'avatar': user.avatar, 'language': user.language, 'languageSet': user.language_set})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error sa pag-set ng password: {e}")
+        return jsonify({'error': 'May naganap na error sa pag-set ng password.'}), 500
 
 @app.route('/api/resend-verification', methods=['POST'])
 def resend_verification():
@@ -1067,6 +1217,7 @@ def submit_support_message():
         data = request.json or {}
         subject = (data.get('subject') or '').strip()[:150] or None
         message = (data.get('message') or '').strip()
+        is_anonymous = bool(data.get('isAnonymous'))
         if not message:
             return jsonify({'error': 'Kailangan ng mensahe.'}), 400
         if len(message) > 2000:
@@ -1076,7 +1227,8 @@ def submit_support_message():
             subject=subject,
             message=message,
             status='open',
-            created_at=datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+            created_at=datetime.utcnow().strftime('%Y-%m-%d %H:%M'),
+            is_anonymous=is_anonymous
         )
         db.session.add(new_msg)
         db.session.commit()
@@ -1099,8 +1251,13 @@ def admin_list_support_messages():
             u = User.query.get(m.user_id)
             result.append({
                 'id': m.id,
-                'username': u.username if u else 'Unknown',
-                'fullName': u.full_name if u else 'Unknown',
+                # Kapag ipinadala bilang Anonymous, itinatago ang pangalan/
+                # username sa admin dashboard — pero nananatili pa rin ang
+                # koneksyon sa user_id sa likod ng eksena (hindi totally
+                # anonymous sa DB) para sagutin pa rin ito ng admin.
+                'username': ('Anonymous' if m.is_anonymous else (u.username if u else 'Unknown')),
+                'fullName': ('Anonymous' if m.is_anonymous else (u.full_name if u else 'Unknown')),
+                'isAnonymous': m.is_anonymous,
                 'subject': m.subject,
                 'message': m.message,
                 'status': m.status,
