@@ -43,6 +43,135 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+// ==================== LANGUAGE / i18n ====================
+// English ang priority/default na wika ng app. Sa unang pagkakataon lang na
+// makapasok ang isang bagong user sa app (kaagad pagkatapos mag-verify ng
+// account, o sa unang login kung wala pa siyang napiling wika dati),
+// lalabas ang language picker modal — isang beses lang ito, dahil
+// naka-tanda ang pagpili sa `language_set` column sa database. Pwede pa rin
+// itong baguhin anumang oras gamit ang lang-pill sa tabi ng username sa
+// itaas ng app.
+const TRANSLATIONS = {
+  en: {
+    'topbar.dashboard': 'Home dashboard',
+    'nav.dashboard': 'Dashboard',
+    'nav.addExpense': 'Add expense',
+    'nav.income': 'Income',
+    'nav.records': 'View / search records',
+    'nav.reports': 'Reports',
+    'nav.support': 'Customer Service',
+    'nav.subscribe': 'Subscribe',
+    'nav.subscriptions': 'Subscriptions',
+    'nav.logout': 'Log out',
+    'dash.expectedSales': 'Expected Sales',
+    'dash.actualIncome': 'Actual Income',
+    'dash.totalExpenses': 'Total Expenses',
+    'dash.netProfit': 'Net Profit',
+    'dash.addProductBtn': '+ Add Product & Expenses',
+    'dash.addIncomeBtn': '+ Add Actual Income',
+    'dash.recentRecords': 'Recent records',
+    'dash.viewAll': 'View all',
+    'dash.sessionExplainer': 'A session is used each time you add a new Product & its Expenses. Logging Actual Income is always free. Once your sessions are used up, adding new products will be locked until you subscribe.',
+    'dash.pendingPricingTitle': '⚠️ Some products still need a price',
+    'dash.pendingPricingSub': 'These show ₱0.00 in your sales and reports until you set their pricing.',
+    'dash.setPricingBtn': 'Set pricing',
+    'auth.email': 'Email',
+    'auth.password': 'Password',
+    'auth.show': 'SHOW',
+    'auth.hide': 'HIDE',
+    'auth.forgotPassword': 'Forgot password?',
+    'auth.logIn': 'Log in',
+    'auth.noAccount': "Don't have an account?",
+    'auth.registerHere': 'Register here',
+  },
+  tl: {
+    'topbar.dashboard': 'Home dashboard',
+    'nav.dashboard': 'Dashboard',
+    'nav.addExpense': 'Magdagdag ng gastos',
+    'nav.income': 'Kita',
+    'nav.records': 'Tingnan / hanapin ang records',
+    'nav.reports': 'Mga Ulat',
+    'nav.support': 'Customer Service',
+    'nav.subscribe': 'Mag-subscribe',
+    'nav.subscriptions': 'Mga Subscription',
+    'nav.logout': 'Mag-log out',
+    'dash.expectedSales': 'Inaasahang Benta',
+    'dash.actualIncome': 'Aktwal na Kita',
+    'dash.totalExpenses': 'Kabuuang Gastos',
+    'dash.netProfit': 'Netong Kita',
+    'dash.addProductBtn': '+ Magdagdag ng Produkto at Gastos',
+    'dash.addIncomeBtn': '+ Magdagdag ng Aktwal na Kita',
+    'dash.recentRecords': 'Kamakailang mga record',
+    'dash.viewAll': 'Tingnan lahat',
+    'auth.email': 'Email',
+    'auth.password': 'Password',
+    'auth.show': 'IPAKITA',
+    'auth.hide': 'ITAGO',
+    'auth.forgotPassword': 'Nakalimutan ang password?',
+    'auth.logIn': 'Mag-log in',
+    'auth.noAccount': 'Wala ka pang account?',
+    'auth.registerHere': 'Magrehistro dito',
+    'dash.pendingPricingTitle': '⚠️ May mga produktong kailangan pa ng presyo',
+    'dash.pendingPricingSub': "Nagpapakita ang mga ito ng \u20b10.00 sa benta at reports mo hangga't hindi mo naitatakda ang presyo nila.",
+    'dash.setPricingBtn': 'Itakda ang presyo',
+  },
+};
+let currentLanguage = localStorage.getItem('harvestly_lang') || 'en';
+
+function applyLanguage(lang) {
+  if (!TRANSLATIONS[lang]) lang = 'en';
+  currentLanguage = lang;
+  localStorage.setItem('harvestly_lang', lang);
+  const dict = TRANSLATIONS[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key]) el.textContent = dict[key];
+  });
+  const pillLabel = document.getElementById('lang-pill-label');
+  const adminPillLabel = document.getElementById('admin-lang-pill-label');
+  const label = lang === 'tl' ? 'TL' : 'EN';
+  if (pillLabel) pillLabel.textContent = label;
+  if (adminPillLabel) adminPillLabel.textContent = label;
+  document.querySelectorAll('.lang-choice-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.lang === lang);
+  });
+  document.documentElement.setAttribute('lang', lang);
+}
+
+// Ise-save sa backend (naka-link sa account, hindi lang sa browser) ang
+// napiling wika, tapos i-a-apply agad sa buong UI.
+async function saveLanguagePreference(lang) {
+  applyLanguage(lang);
+  try {
+    await fetch('/api/language', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language: lang })
+    });
+  } catch (e) {
+    // Hindi kritikal — naka-apply na naman agad sa UI kahit mabigo ang save;
+    // susubukan na lang ulit ma-persist sa susunod na pagpili/refresh.
+  }
+}
+
+function openLanguageModal() {
+  document.getElementById('language-modal-backdrop')?.classList?.add('active');
+}
+function closeLanguageModal() {
+  document.getElementById('language-modal-backdrop')?.classList?.remove('active');
+}
+document.querySelectorAll('.lang-choice-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    saveLanguagePreference(btn.dataset.lang);
+    closeLanguageModal();
+  });
+});
+document.getElementById('btn-lang-switch')?.addEventListener('click', openLanguageModal);
+document.getElementById('btn-admin-lang-switch')?.addEventListener('click', openLanguageModal);
+// I-a-apply agad ang naka-cache na wika (kung meron) bago pa man mag-login,
+// para tama na rin ang tingin ng splash/auth screens.
+applyLanguage(currentLanguage);
+
 // ==================== SLIDESHOW & PASSWORD TOGGLE ====================
 function startSlideshow() {
   const splashSlides = document.querySelectorAll('.splash-farmbg .cornfield-bg-img');
@@ -67,6 +196,16 @@ document.querySelectorAll('.toggle-password-btn').forEach(btn => {
       }
     }
   });
+});
+// Radio-pill visual state (fallback for browsers without :has() support)
+document.querySelectorAll('.radio-pill input[type="radio"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    const name = radio.name;
+    document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+      r.closest('.radio-pill')?.classList.toggle('is-checked', r.checked);
+    });
+  });
+  if (radio.checked) radio.closest('.radio-pill')?.classList.add('is-checked');
 });
 // Avatar picker (Register) — simple preset selection, no upload needed
 const avatarOptionBtns = document.querySelectorAll('.avatar-option');
@@ -96,24 +235,28 @@ function clearAuthFields() {
   if (formVerify) formVerify.reset();
   if (formForgot) formForgot.reset();
   if (formReset) formReset.reset();
-  const ids = ['login-identifier', 'login-password', 'signup-name', 'signup-username', 'signup-contact', 'signup-password', 'signup-confirm',
+  const ids = ['login-identifier', 'login-password',
+    'signup-lastname', 'signup-firstname', 'signup-middlename', 'signup-username', 'signup-contact',
+    'signup-verify-code', 'signup-password', 'signup-confirm',
     'verify-email', 'verify-code', 'forgot-email', 'reset-email', 'reset-code', 'reset-new-password', 'reset-confirm-password'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  const errIds = ['login-error', 'signup-error', 'verify-error', 'forgot-error', 'reset-error'];
+  const errIds = ['login-error', 'signup-error', 'verify-error', 'forgot-error', 'reset-error', 'eula-error'];
   errIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.hidden = true;
   });
-  const infoIds = ['login-info', 'verify-info', 'forgot-info', 'reset-info'];
+  const infoIds = ['login-info', 'signup-info', 'verify-info', 'forgot-info', 'reset-info'];
   infoIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.hidden = true;
   });
   const verifyEmailDisplay = document.getElementById('verify-email-display');
   if (verifyEmailDisplay) verifyEmailDisplay.textContent = '-';
+  const signupVerifyEmailDisplay = document.getElementById('signup-verify-email-display');
+  if (signupVerifyEmailDisplay) signupVerifyEmailDisplay.textContent = '-';
   const resetEmailDisplay = document.getElementById('reset-email-display');
   if (resetEmailDisplay) resetEmailDisplay.textContent = '-';
   const passInputs = ['login-password', 'signup-password', 'signup-confirm', 'reset-new-password', 'reset-confirm-password'];
@@ -123,6 +266,7 @@ function clearAuthFields() {
   });
   document.querySelectorAll('.toggle-password-btn').forEach(b => b.textContent = 'SHOW');
   resetAvatarPicker();
+  resetSignupWizard();
 }
 // Ipinapakita ang isang partikular na auth panel (login/signup/verify/forgot/reset)
 // at itinatago ang lahat ng iba pa. Ginagamit ng mga auth-switch-link (via
@@ -147,20 +291,60 @@ let currentActualIncome = 0;
 let activeViewTab = 'produce';
 let lastSavedType = 'produce'; // To handle dynamic modal buttons
 // ==================== MONTH HELPERS ====================
+// Converts a "YYYY-MM-DD" date string into a "YYYY-MM" month key used
+// for grouping records by month (reports, dropdown filters, caches).
 function getMonthKey(dateStr) {
   if (!dateStr) return '';
-  return dateStr.slice(0, 7); // "YYYY-MM"
+  return String(dateStr).slice(0, 7);
 }
+
+// Converts a "YYYY-MM" month key into a readable label, e.g. "September 2026".
 function getMonthLabel(monthKey) {
-  if (!monthKey) return 'Unknown';
-  const [y, m] = monthKey.split('-');
-  const d = new Date(parseInt(y), parseInt(m) - 1, 1);
+  if (!monthKey) return '';
+  const [year, month] = monthKey.split('-').map(Number);
+  if (!year || !month) return monthKey;
+  const d = new Date(year, month - 1, 1);
   return d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 }
+
+const productsByMonthCache = new Map();
+
+function rebuildProductsByMonthCache() {
+  productsByMonthCache.clear();
+
+  for (const record of records) {
+    if (record.type !== 'produce') {
+      continue;
+    }
+
+    const month = getMonthKey(record.date);
+
+    if (!month) {
+      continue;
+    }
+
+    if (!productsByMonthCache.has(month)) {
+      productsByMonthCache.set(month, new Set());
+    }
+
+    productsByMonthCache.get(month).add(record.name);
+  }
+}
+
 function getProductsForMonth(dateStr) {
   const monthKey = getMonthKey(dateStr);
-  const names = [...new Set(records.filter(r => r.type === 'produce' && getMonthKey(r.date) === monthKey).map(r => r.name))];
-  return names.length > 0 ? names.join(', ') : 'General Farm Income';
+
+  if (!monthKey) {
+    return 'General Farm Income';
+  }
+
+  const products = productsByMonthCache.get(monthKey);
+
+  if (!products || products.size === 0) {
+    return 'General Farm Income';
+  }
+
+  return [...products].join(', ');
 }
 // Safe Element Selectors
 const screenSplash = document.getElementById('screen-splash');
@@ -217,9 +401,71 @@ document.querySelectorAll('.auth-switch-link').forEach(btn => {
   btn.addEventListener('click', (e) => {
     const tab = e.target.dataset.tab;
     if (!tab) return;
+    // EULA GATE: bago makapasok sa Registration page, kailangang tanggapin
+    // muna ng (bagong) user ang End User License Agreement. Ipinapakita ang
+    // screen-eula sa halip na diretsong pumunta sa signup panel.
+    if (tab === 'signup') {
+      showEulaScreen();
+      return;
+    }
     showAuthPanel(tab);
   });
 });
+// ==================== EULA (End User License Agreement) ====================
+const screenEula = document.getElementById('screen-eula');
+const eulaAcceptCheckbox = document.getElementById('eula-accept-checkbox');
+const btnEulaAccept = document.getElementById('btn-eula-accept');
+const btnEulaDecline = document.getElementById('btn-eula-decline');
+const btnEulaBack = document.getElementById('btn-eula-back');
+function resetEulaScreen() {
+  if (eulaAcceptCheckbox) eulaAcceptCheckbox.checked = false;
+  if (btnEulaAccept) btnEulaAccept.disabled = true;
+  const eulaError = document.getElementById('eula-error');
+  if (eulaError) eulaError.hidden = true;
+}
+function showEulaScreen() {
+  resetEulaScreen();
+  screenAuth?.classList?.remove('active');
+  screenEula?.classList?.add('active');
+}
+function hideEulaScreen() {
+  screenEula?.classList?.remove('active');
+}
+if (eulaAcceptCheckbox) {
+  eulaAcceptCheckbox.addEventListener('change', () => {
+    if (btnEulaAccept) btnEulaAccept.disabled = !eulaAcceptCheckbox.checked;
+    const eulaError = document.getElementById('eula-error');
+    if (eulaError && eulaAcceptCheckbox.checked) eulaError.hidden = true;
+  });
+}
+if (btnEulaAccept) {
+  btnEulaAccept.addEventListener('click', () => {
+    if (!eulaAcceptCheckbox || !eulaAcceptCheckbox.checked) {
+      const eulaError = document.getElementById('eula-error');
+      if (eulaError) eulaError.hidden = false;
+      return;
+    }
+    hideEulaScreen();
+    screenAuth?.classList?.add('active');
+    clearAuthFields();
+    resetSignupWizard();
+    showAuthPanel('signup');
+  });
+}
+if (btnEulaDecline) {
+  btnEulaDecline.addEventListener('click', () => {
+    hideEulaScreen();
+    screenAuth?.classList?.add('active');
+    showAuthPanel('login');
+  });
+}
+if (btnEulaBack) {
+  btnEulaBack.addEventListener('click', () => {
+    hideEulaScreen();
+    screenAuth?.classList?.add('active');
+    showAuthPanel('login');
+  });
+}
 // ==================== AUTHENTICATION ====================
 const formLogin = document.getElementById('form-login');
 if (formLogin) {
@@ -240,22 +486,8 @@ if (formLogin) {
       });
       const data = await response.json();
       if (response.ok) {
-        currentUser = data.username;
-        currentRole = data.role || 'farmer';
-        currentAvatar = data.avatar || '🌾';
         if (err) err.hidden = true;
-        screenAuth?.classList?.remove('active');
-        if (currentRole === 'admin') {
-          await enterAdminApp();
-        } else {
-          appShell?.classList?.add('active');
-          const topbarUser = document.getElementById('topbar-username');
-          if (topbarUser) topbarUser.textContent = currentUser;
-          const topbarAvatar = document.getElementById('topbar-avatar');
-          if (topbarAvatar) topbarAvatar.textContent = currentAvatar;
-          initApp();
-          await fetchUserDataFromBackend();
-        }
+        await enterAppAfterAuth(data);
       } else if (data.requiresVerification) {
         // Tama ang password pero hindi pa verified ang email — nagpadala na
         // ang backend ng verification code, ipakita na lang ang verify panel.
@@ -275,59 +507,219 @@ if (formLogin) {
     }
   });
 }
+// ==================== MULTI-STEP REGISTRATION WIZARD ====================
+// Step 1: Last/First/Middle Name (client-side only, walang API call).
+// Step 2: Username + Email -> POST /api/signup (creates a pending account,
+//         sends OTP).
+// Step 3: Verification Code -> POST /api/verify-email (unlocks Step 4).
+// Step 4: Password (disabled hangga't hindi verified) -> POST
+//         /api/set-password (kino-complete ang account at nag-lo-login).
 const formSignup = document.getElementById('form-signup');
+const signupSteps = document.querySelectorAll('.signup-step');
+const signupStepDots = document.querySelectorAll('.step-dot');
+let signupCurrentStep = 1;
+let signupPendingEmail = ''; // email na ginamit sa kasalukuyang pending registration
+
+function goToSignupStep(stepNum) {
+  signupCurrentStep = stepNum;
+  signupSteps.forEach(panel => {
+    panel.classList.toggle('active', Number(panel.dataset.stepPanel) === stepNum);
+  });
+  signupStepDots.forEach(dot => {
+    const dotStep = Number(dot.dataset.stepDot);
+    dot.classList.toggle('active', dotStep === stepNum);
+    dot.classList.toggle('done', dotStep < stepNum);
+  });
+  const err = document.getElementById('signup-error');
+  if (err) err.hidden = true;
+}
+function resetSignupWizard() {
+  signupPendingEmail = '';
+  const pwInput = document.getElementById('signup-password');
+  const confirmInput = document.getElementById('signup-confirm');
+  const submitBtn = document.getElementById('btn-signup-submit');
+  if (pwInput) pwInput.disabled = true;
+  if (confirmInput) confirmInput.disabled = true;
+  if (submitBtn) submitBtn.disabled = true;
+  goToSignupStep(1);
+}
+
+// --- STEP 1 -> STEP 2 ---
+const btnSignupStep1Next = document.getElementById('btn-signup-step1-next');
+if (btnSignupStep1Next) {
+  btnSignupStep1Next.addEventListener('click', () => {
+    const lastName = document.getElementById('signup-lastname')?.value.trim() || '';
+    const firstName = document.getElementById('signup-firstname')?.value.trim() || '';
+    const err = document.getElementById('signup-error');
+    if (!lastName || !firstName) {
+      if (err) { err.textContent = 'Please enter your Last Name and First Name.'; err.hidden = false; }
+      return;
+    }
+    if (err) err.hidden = true;
+    goToSignupStep(2);
+  });
+}
+const btnSignupStep2Back = document.getElementById('btn-signup-step2-back');
+if (btnSignupStep2Back) {
+  btnSignupStep2Back.addEventListener('click', () => goToSignupStep(1));
+}
+
+// --- STEP 2 -> STEP 3 (sends the account to the backend + triggers OTP) ---
+const btnSignupStep2Next = document.getElementById('btn-signup-step2-next');
+if (btnSignupStep2Next) {
+  btnSignupStep2Next.addEventListener('click', async () => {
+    const lastName = document.getElementById('signup-lastname')?.value.trim() || '';
+    const firstName = document.getElementById('signup-firstname')?.value.trim() || '';
+    const middleName = document.getElementById('signup-middlename')?.value.trim() || '';
+    const userVal = document.getElementById('signup-username')?.value.trim() || '';
+    const contactVal = document.getElementById('signup-contact')?.value.trim() || '';
+    const err = document.getElementById('signup-error');
+    if (!userVal || !contactVal) {
+      if (err) { err.textContent = 'Please enter a username and email.'; err.hidden = false; }
+      return;
+    }
+    btnSignupStep2Next.disabled = true;
+    btnSignupStep2Next.textContent = 'Sending code…';
+    try {
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lastName, firstName, middleName,
+          username: userVal, contact: contactVal, avatar: selectedAvatar
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.requiresVerification) {
+        if (err) err.hidden = true;
+        signupPendingEmail = data.email || contactVal;
+        const emailDisplay = document.getElementById('signup-verify-email-display');
+        if (emailDisplay) emailDisplay.textContent = signupPendingEmail;
+        goToSignupStep(3);
+      } else {
+        if (err) { err.textContent = data.error || 'Registration failed.'; err.hidden = false; }
+      }
+    } catch (error) {
+      if (err) { err.textContent = 'Cannot connect to server.'; err.hidden = false; }
+    } finally {
+      btnSignupStep2Next.disabled = false;
+      btnSignupStep2Next.textContent = 'Next';
+    }
+  });
+}
+const btnSignupStep3Back = document.getElementById('btn-signup-step3-back');
+if (btnSignupStep3Back) {
+  btnSignupStep3Back.addEventListener('click', () => goToSignupStep(2));
+}
+
+// --- STEP 3 -> STEP 4 (verify OTP, then unlock the password fields) ---
+const btnSignupStep3Next = document.getElementById('btn-signup-step3-next');
+if (btnSignupStep3Next) {
+  btnSignupStep3Next.addEventListener('click', async () => {
+    const code = document.getElementById('signup-verify-code')?.value.trim() || '';
+    const err = document.getElementById('signup-error');
+    if (!code) {
+      if (err) { err.textContent = 'Please enter the verification code.'; err.hidden = false; }
+      return;
+    }
+    btnSignupStep3Next.disabled = true;
+    btnSignupStep3Next.textContent = 'Verifying…';
+    try {
+      const response = await fetch('/api/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: signupPendingEmail, code })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        if (err) err.hidden = true;
+        // Unlock Step 4's password fields, now that the email is verified.
+        const pwInput = document.getElementById('signup-password');
+        const confirmInput = document.getElementById('signup-confirm');
+        const submitBtn = document.getElementById('btn-signup-submit');
+        if (pwInput) pwInput.disabled = false;
+        if (confirmInput) confirmInput.disabled = false;
+        if (submitBtn) submitBtn.disabled = false;
+        goToSignupStep(4);
+      } else {
+        if (err) { err.textContent = data.error || 'Invalid or expired code.'; err.hidden = false; }
+      }
+    } catch (error) {
+      if (err) { err.textContent = 'Cannot connect to server.'; err.hidden = false; }
+    } finally {
+      btnSignupStep3Next.disabled = false;
+      btnSignupStep3Next.textContent = 'Verify';
+    }
+  });
+}
+const btnSignupResendCode = document.getElementById('btn-signup-resend-code');
+if (btnSignupResendCode) {
+  btnSignupResendCode.addEventListener('click', async () => {
+    const err = document.getElementById('signup-error');
+    const info = document.getElementById('signup-info');
+    if (!signupPendingEmail) return;
+    try {
+      const response = await fetch('/api/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: signupPendingEmail })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        if (err) err.hidden = true;
+        if (info) { info.textContent = data.message || 'A new code has been sent.'; info.hidden = false; }
+      } else {
+        if (info) info.hidden = true;
+        if (err) { err.textContent = data.error || 'Could not resend the code.'; err.hidden = false; }
+      }
+    } catch (error) {
+      if (err) { err.textContent = 'Cannot connect to server.'; err.hidden = false; }
+    }
+  });
+}
+
+// --- STEP 4: password validation + final submit ---
+// Alphanumeric (may titik AT numero) at hindi bababa sa 7 characters —
+// pareho itong client-side check (mabilis na feedback) at server-side check
+// (app.py PASSWORD_RE, ang tunay na pinagbabatayan).
+const SIGNUP_PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d).{7,}$/;
 if (formSignup) {
   formSignup.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = document.getElementById('signup-name')?.value.trim() || '';
-    const userVal = document.getElementById('signup-username')?.value.trim() || '';
-    const contactVal = document.getElementById('signup-contact')?.value.trim() || '';
     const passVal = document.getElementById('signup-password')?.value.trim() || '';
     const confirmVal = document.getElementById('signup-confirm')?.value.trim() || '';
     const err = document.getElementById('signup-error');
-    if (!name || !userVal || !contactVal || !passVal) {
-      if (err) { err.textContent = 'Please complete all fields.'; err.hidden = false; }
+    if (!passVal || !confirmVal) {
+      if (err) { err.textContent = 'Please complete both password fields.'; err.hidden = false; }
+      return;
+    }
+    if (!SIGNUP_PASSWORD_RE.test(passVal)) {
+      if (err) { err.textContent = 'Password must be alphanumeric (letters and numbers) and at least 7 characters long.'; err.hidden = false; }
       return;
     }
     if (passVal !== confirmVal) {
       if (err) { err.textContent = 'Passwords do not match.'; err.hidden = false; }
       return;
     }
+    const submitBtn = document.getElementById('btn-signup-submit');
+    if (submitBtn) submitBtn.disabled = true;
     try {
-      const response = await fetch('/api/signup', {
+      const response = await fetch('/api/set-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, username: userVal, contact: contactVal, password: passVal, avatar: selectedAvatar })
+        body: JSON.stringify({ email: signupPendingEmail, password: passVal })
       });
       const data = await response.json();
-      if (response.ok && data.requiresVerification) {
-        // Email ang ginamit sa Register — kailangan munang i-verify bago
-        // makapasok sa app. Ipinadala na ng backend ang code.
+      if (response.ok) {
         if (err) err.hidden = true;
-        const verifyEmailInput = document.getElementById('verify-email');
-        const verifyEmailDisplay = document.getElementById('verify-email-display');
-        const verifyInfo = document.getElementById('verify-info');
-        if (verifyEmailInput) verifyEmailInput.value = data.email || '';
-        if (verifyEmailDisplay) verifyEmailDisplay.textContent = data.email || '';
-        if (verifyInfo) { verifyInfo.textContent = 'Nagawa ang account! Ipinadala ang verification code sa email mo.'; verifyInfo.hidden = false; }
-        showAuthPanel('verify');
-      } else if (response.ok) {
-        currentUser = data.username;
-        currentAvatar = data.avatar || selectedAvatar;
-        if (err) err.hidden = true;
-        screenAuth?.classList?.remove('active');
-        appShell?.classList?.add('active');
-        const topbarUser = document.getElementById('topbar-username');
-        if (topbarUser) topbarUser.textContent = currentUser;
-        const topbarAvatar = document.getElementById('topbar-avatar');
-        if (topbarAvatar) topbarAvatar.textContent = currentAvatar;
-        initApp();
-        await fetchUserDataFromBackend();
+        await enterAppAfterAuth(data, { showTutorial: true });
       } else {
-        if (err) { err.textContent = data.error || 'Registration failed.'; err.hidden = false; }
+        if (err) { err.textContent = data.error || 'Could not create the account.'; err.hidden = false; }
       }
     } catch (error) {
       if (err) { err.textContent = 'Cannot connect to server.'; err.hidden = false; }
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 }
@@ -474,10 +866,16 @@ async function enterAppAfterAuth(data, opts) {
   currentUser = data.username;
   currentRole = data.role || 'farmer';
   currentAvatar = data.avatar || '🌾';
+  // Gamitin ang wikang naka-save sa account (kung meron); kung wala pa
+  // itong na-e-explicit na napili (bagong account), ipapakita ang picker
+  // na ito isang beses lang — hanggang hindi pumipili ang user, English
+  // (default) muna ang gagamitin.
+  applyLanguage(data.language || currentLanguage || 'en');
   screenSplash?.classList?.remove('active');
   screenAuth?.classList?.remove('active');
   if (currentRole === 'admin') {
     await enterAdminApp();
+    if (!data.languageSet) openLanguageModal();
     return;
   }
   appShell?.classList?.add('active');
@@ -488,6 +886,7 @@ async function enterAppAfterAuth(data, opts) {
   initApp();
   await fetchUserDataFromBackend();
   if (opts.showTutorial) startOnboardingTutorial();
+  if (!data.languageSet) openLanguageModal();
 }
 // BAGO: "stay logged in" check. Tinatawag ito sa unang pag-load ng page
 // (tingnan ang pagtawag dito sa ibaba) para malaman kung may valid session
@@ -677,9 +1076,11 @@ async function enterAdminApp() {
   if (adminTopbarUser) adminTopbarUser.textContent = currentUser;
   const adminTopbarAvatar = document.getElementById('admin-topbar-avatar');
   if (adminTopbarAvatar) adminTopbarAvatar.textContent = currentAvatar;
-  // Dashboard ang unang makikita; kinukuha pa rin ang support para sa badge count.
+  // Dashboard ang unang makikita; kinukuha pa rin ang support/subscriptions
+  // list para lang sa badge counts.
   await renderAdminDashboard();
   await renderAdminSupportMessages();
+  await renderAdminSubscriptions();
 }
 const btnAdminMenu = document.getElementById('btn-admin-menu');
 if (btnAdminMenu) {
@@ -702,6 +1103,7 @@ if (formSupport) {
     if (okEl) okEl.hidden = true;
     const subject = subjectEl?.value.trim() || '';
     const message = messageEl?.value.trim() || '';
+    const isAnonymous = document.getElementById('support-visibility-anon')?.checked || false;
     if (!message) {
       if (errEl) { errEl.textContent = 'Kailangan ng mensahe.'; errEl.hidden = false; }
       return;
@@ -710,7 +1112,7 @@ if (formSupport) {
       const res = await fetch('/api/support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, message })
+        body: JSON.stringify({ subject, message, isAnonymous })
       });
       const data = await res.json();
       if (res.ok) {
@@ -798,9 +1200,12 @@ async function renderAdminSupportMessages() {
              <textarea placeholder="I-type ang reply mo dito..." required></textarea>
              <button type="submit" class="btn btn-primary btn-sm">Send reply</button>
            </form>`;
+      const submitterLabel = m.isAnonymous
+        ? '<span class="support-anon-badge">Anonymous</span>'
+        : `${escapeHtml(m.fullName)} (${escapeHtml(m.username)})`;
       item.innerHTML = `
         <div class="support-item-head">
-          <span class="support-item-subject">${escapeHtml(m.subject || 'Concern')} <span class="empty-state" style="padding:0;">— ${escapeHtml(m.fullName)} (${escapeHtml(m.username)})</span></span>
+          <span class="support-item-subject">${escapeHtml(m.subject || 'Concern')} <span class="empty-state" style="padding:0;">— ${submitterLabel}</span></span>
           <span class="admin-badge ${badgeClass}">${badgeLabel}</span>
         </div>
         <p class="support-item-meta">${escapeHtml(m.createdAt)}</p>
@@ -1039,6 +1444,88 @@ if (btnAdminNavSupport) {
     renderAdminSupportMessages();
   });
 }
+
+const btnAdminNavSubscriptions = document.getElementById('btn-admin-nav-subscriptions');
+if (btnAdminNavSubscriptions) {
+  btnAdminNavSubscriptions.addEventListener('click', () => {
+    document.getElementById('admin-sidebar')?.classList?.remove('open');
+    document.querySelectorAll('#admin-sidebar .nav-item').forEach(i => i.classList.remove('active'));
+    btnAdminNavSubscriptions.classList.add('active');
+    document.querySelectorAll('#admin-shell .main .screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-admin-subscriptions')?.classList.add('active');
+    const adminTitle = document.getElementById('admin-topbar-title');
+    if (adminTitle) adminTitle.textContent = 'Subscriptions';
+    renderAdminSubscriptions();
+  });
+}
+
+// ADMIN: Subscriptions review — dito na-close ang loophole na dating
+// awtomatikong na-a-approve ang kahit anong self-reported na GCash
+// reference number. Titingnan muna ng admin ang bawat request, susuriin
+// ang payment reference, bago mag-approve o mag-reject.
+async function renderAdminSubscriptions() {
+  const listEl = document.getElementById('admin-subscriptions-list');
+  const badgeEl = document.getElementById('admin-subscriptions-badge');
+  if (!listEl) return;
+  try {
+    const res = await fetch('/api/admin/subscriptions');
+    if (!res.ok) return;
+    const data = await res.json();
+    const reqs = data.requests || [];
+    const pendingCount = reqs.filter(r => r.status === 'pending').length;
+    if (badgeEl) {
+      if (pendingCount > 0) { badgeEl.textContent = pendingCount; badgeEl.style.display = ''; }
+      else { badgeEl.style.display = 'none'; }
+    }
+    listEl.innerHTML = '';
+    if (reqs.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">Wala pang subscription requests.</div>';
+      return;
+    }
+    const statusLabels = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
+    const statusClass = { pending: 'admin-badge--pending', approved: 'admin-badge--approved', rejected: 'admin-badge--rejected' };
+    reqs.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'support-item';
+      const actions = r.status === 'pending'
+        ? `<div class="sub-review-actions">
+             <button type="button" class="btn btn-primary btn-sm" data-action="approve" data-id="${r.id}">Approve</button>
+             <button type="button" class="btn btn-outline btn-sm" data-action="reject" data-id="${r.id}">Reject</button>
+           </div>`
+        : '';
+      item.innerHTML = `
+        <div class="support-item-head">
+          <span class="support-item-subject">${escapeHtml(r.plan || '-')} — ${escapeHtml(r.sessionsGranted)} sessions <span class="empty-state" style="padding:0;">— ${escapeHtml(r.fullName)} (${escapeHtml(r.username)})</span></span>
+          <span class="admin-badge ${statusClass[r.status] || ''}">${statusLabels[r.status] || r.status}</span>
+        </div>
+        <p class="support-item-meta">Requested: ${escapeHtml(r.requestedAt)}${r.reviewedAt ? ' • Reviewed: ' + escapeHtml(r.reviewedAt) : ''}</p>
+        <p class="support-item-message">GCash reference: <strong>${escapeHtml(r.paymentReference || '-')}</strong> — i-verify ito laban sa aktwal na GCash transaction history bago i-approve.</p>
+        ${actions}
+      `;
+      listEl.appendChild(item);
+    });
+    listEl.querySelectorAll('[data-action="approve"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Kumpirmado mo bang na-verify mo na ang GCash reference number na ito at totoo ang bayad?')) return;
+        const res2 = await fetch(`/api/admin/subscriptions/${btn.dataset.id}/approve`, { method: 'POST' });
+        const d2 = await res2.json().catch(() => ({}));
+        if (!res2.ok) alert(d2.error || 'Error sa pag-approve.');
+        renderAdminSubscriptions();
+      });
+    });
+    listEl.querySelectorAll('[data-action="reject"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Sigurado ka bang i-reject ang request na ito?')) return;
+        const res2 = await fetch(`/api/admin/subscriptions/${btn.dataset.id}/reject`, { method: 'POST' });
+        const d2 = await res2.json().catch(() => ({}));
+        if (!res2.ok) alert(d2.error || 'Error sa pag-reject.');
+        renderAdminSubscriptions();
+      });
+    });
+  } catch (e) {
+    console.error('Error loading admin subscriptions:', e);
+  }
+}
 // ==================== FETCH DATA FROM FLASK BACKEND ====================
 async function fetchUserDataFromBackend() {
   try {
@@ -1046,22 +1533,54 @@ async function fetchUserDataFromBackend() {
     if (response.ok) {
       const data = await response.json();
       records = data.records || [];
-      actualIncomeHistory = data.incomeHistory || [];
-      currentRole = data.role || 'farmer';
+actualIncomeHistory = data.incomeHistory || [];
+
+rebuildProductsByMonthCache();
+
+currentRole = data.role || 'farmer';
       usageStatus = data.usage || usageStatus;
       // Dashboard "Actual Income" should reflect ALL saved income entries combined,
       // not just the most recently added one — same as Sales, Expenses, and Profit.
       currentActualIncome = actualIncomeHistory.reduce((s, r) => s + (r.amount || 0), 0);
       updateDashboard();
       renderRecords();
+      renderReports();
       renderIncomeHistoryTable();
       renderIncomeMonitoringByProduct();
       initComputationDropdowns();
       updateSubscriptionUI();
+      hideDataLoadErrorBanner();
+    } else {
+      showDataLoadErrorBanner();
     }
   } catch (error) {
     console.error("Error loading data from backend:", error);
+    showDataLoadErrorBanner();
   }
+}
+// Kapag nabigo ang /api/data (hal. cold start ng free-tier hosting, o
+// network hiccup), ipinapakita ito nang malinaw sa halip na tahimik na
+// mananatiling walang laman ang Dashboard/Reports nang hindi alam ng user.
+function showDataLoadErrorBanner() {
+  let banner = document.getElementById('data-load-error-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'data-load-error-banner';
+    banner.className = 'data-load-error-banner';
+    banner.innerHTML = `
+      <span>Hindi na-load ang datos mo. Baka mabagal lang mag-wake up ang server — subukan ulit.</span>
+      <button type="button" id="btn-retry-data-load">Subukan Ulit</button>
+    `;
+    document.querySelector('.main')?.prepend(banner);
+    document.getElementById('btn-retry-data-load')?.addEventListener('click', () => {
+      fetchUserDataFromBackend();
+    });
+  }
+  banner.style.display = 'flex';
+}
+function hideDataLoadErrorBanner() {
+  const banner = document.getElementById('data-load-error-banner');
+  if (banner) banner.style.display = 'none';
 }
 // Populates dropdown list of products for the Computation & Comparison (per product) view
 function populateProductSelectDropdown() {
@@ -1209,6 +1728,14 @@ function navigateToScreen(targetScreen) {
   if (targetScreen === 'records') renderRecords();
   if (targetScreen === 'reports') renderReports();
   if (targetScreen === 'support') renderMySupportMessages();
+  // Dashboard at Reports: laging kumuha ng FRESH data mula backend sa bawat
+  // pagbisita dito, hindi lang umaasa sa huling naka-cache na `records` sa
+  // memory. Nililinis nito ang tsansang magkaiba ang makikita sa Dashboard/
+  // Reports kumpara sa View/Search kapag na-miss ang isang naunang fetch
+  // (hal. dahil sa cold start ng free-tier hosting).
+  if (targetScreen === 'dashboard' || targetScreen === 'reports') {
+    fetchUserDataFromBackend();
+  }
   if (targetScreen === 'subscribe') {
     loadGcashInfo();
     updateSubscribeStatusText();
@@ -1286,12 +1813,21 @@ if (btnAddRow) {
 }
 function calculateTotalExpenseInput() {
   let total = 0;
-  const amounts = document.querySelectorAll('.expense-amount');
-  amounts.forEach(input => {
-    total += parseFloat(input.value) || 0;
-  });
+
+  if (!expenseContainer) {
+    return 0;
+  }
+
+  for (const input of expenseContainer.querySelectorAll('.expense-amount')) {
+    total += Number.parseFloat(input.value) || 0;
+  }
+
   const totalDisplay = document.getElementById('expense-calculated-total');
-  if (totalDisplay) totalDisplay.textContent = `₱${total.toFixed(2)}`;
+
+  if (totalDisplay) {
+    totalDisplay.textContent = `₱${total.toFixed(2)}`;
+  }
+
   return total;
 }
 /* ACTUAL INCOME MONITORING LOGIC */
@@ -1397,12 +1933,18 @@ if (formActualIncome) {
         await fetchUserDataFromBackend();
         if (incInput) incInput.value = '';
         // Ang harvest ay tapos na (actual income na-record) — ihanda ang
-        // rate-this-harvest popup na lalabas sa Dashboard. PERO isang beses
-        // lang dapat maka-rate ang isang account, kaya kung may record na
-        // dati na may laman ang rating (ibig sabihin nakapag-rate na siya),
-        // hindi na muling ipapakita ang popup.
-        const alreadyRatedBefore = records.some(r => r.rating !== null && r.rating !== undefined);
-        if (!alreadyRatedBefore) {
+        // rate-this-harvest popup na lalabas sa Dashboard. FIX: dati,
+        // isang beses lang HABANG BUHAY ng account makaka-rate (kahit iba
+        // na ang produkto/cycle), dahil global ang check. Ngayon, per-batch
+        // ng mismong mga produce record na ito ang tinitignan — kung wala
+        // pang rating ang mga specific na record na ito, ipapakita ang
+        // rating popup, kahit nakapag-rate na dati ang ibang harvest.
+        const thisHarvestAlreadyRated = matchedProduceRecords.length > 0 &&
+          matchedProduceRecords.every(mr => {
+            const fresh = records.find(r => String(r.id) === String(mr.id));
+            return fresh && fresh.rating !== null && fresh.rating !== undefined;
+          });
+        if (matchedProduceRecords.length > 0 && !thisHarvestAlreadyRated) {
           pendingHarvestRatingIds = matchedProduceRecords.map(r => r.id);
           pendingHarvestRatingName = productName;
         }
@@ -1696,46 +2238,126 @@ document.getElementById('btn-pricing-saved-close')?.addEventListener('click', ()
   document.getElementById('pricing-saved-backdrop')?.classList.remove('active');
 });
 // Dashboard Update
+// USABILITY FIX: kapag hindi na-set ng farmer ang presyo ng isang produkto
+// (nananatiling ₱0.00 ang amount hangga't hindi binisita ang "View Expenses
+// for this Product"), permanenteng ₱0 lang ang record na iyon sa lahat ng
+// reports/dashboard nang hindi niya alam — kaya nilalagyan natin ito ng
+// palaging nakikitang paalala sa Dashboard.
+function renderPendingPricingReminder() {
+  const banner = document.getElementById('pending-pricing-banner');
+  const listEl = document.getElementById('pending-pricing-list');
+  if (!banner || !listEl) return;
+  const unpriced = records.filter(r => r.type === 'produce' && (!r.pricePerUnit || r.pricePerUnit <= 0));
+  if (unpriced.length === 0) {
+    banner.style.display = 'none';
+    listEl.innerHTML = '';
+    return;
+  }
+  banner.style.display = 'block';
+  listEl.innerHTML = unpriced.map(item => `
+    <div class="pending-pricing-item">
+      <span>
+        <span class="pending-pricing-item-name">${escapeHtml(item.name || '')}</span>
+        <span class="pending-pricing-item-date">${escapeHtml(item.date || '')}</span>
+      </span>
+      <button type="button" class="btn btn-outline btn-sm" onclick="openProduceDetail('${item.id}')" data-i18n="dash.setPricingBtn">Set pricing</button>
+    </div>
+  `).join('');
+  applyLanguage(currentLanguage);
+}
+
 function updateDashboard() {
-  const sales = records.filter(r => r.type === 'produce').reduce((s, r) => s + r.amount, 0);
-  const expenses = records.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0);
+  let sales = 0;
+  let expenses = 0;
+
+  for (const record of records) {
+    const amount = Number(record.amount) || 0;
+
+    if (record.type === 'produce') {
+      sales += amount;
+    } else if (record.type === 'expense') {
+      expenses += amount;
+    }
+  }
+
   const profit = currentActualIncome - expenses;
+
+  renderPendingPricingReminder();
+
   const statSales = document.getElementById('stat-sales');
   const statExpenses = document.getElementById('stat-expenses');
   const statActual = document.getElementById('stat-actual-income');
   const statProfit = document.getElementById('stat-profit');
-  if (statSales) statSales.textContent = `₱${sales.toFixed(2)}`;
-  if (statExpenses) statExpenses.textContent = `₱${expenses.toFixed(2)}`;
-  if (statActual) statActual.textContent = `₱${currentActualIncome.toFixed(2)}`;
+
+  if (statSales) {
+    statSales.textContent = `₱${sales.toFixed(2)}`;
+  }
+
+  if (statExpenses) {
+    statExpenses.textContent = `₱${expenses.toFixed(2)}`;
+  }
+
+  if (statActual) {
+    statActual.textContent = `₱${currentActualIncome.toFixed(2)}`;
+  }
+
   if (statProfit) {
     statProfit.textContent = `₱${profit.toFixed(2)}`;
+
     const card = document.getElementById('stat-profit-card');
+
     if (card) {
-      if (profit < 0) card.classList.add('negative');
-      else card.classList.remove('negative');
+      card.classList.toggle('negative', profit < 0);
     }
   }
+
   const recentList = document.getElementById('recent-list');
-  if (recentList) {
-    recentList.innerHTML = '';
-    const recent = [...records].reverse().slice(0, 5);
-    if (recent.length === 0) {
-      recentList.innerHTML = '<div class="empty-state">No records added yet.</div>';
-      return;
-    }
-    recent.forEach(item => {
-      const row = document.createElement('div');
-      row.className = 'record-row';
-      row.innerHTML = `
-        <span class="record-dot record-dot--${item.type}"></span>
-        <div class="record-name">${escapeHtml(item.name)} <span class="record-meta">• ${escapeHtml(item.date)}</span></div>
-        <div class="record-amount ${item.type === 'produce' ? 'record-amount--positive' : 'record-amount--negative'}">
-          ${item.type === 'produce' ? '+' : '-'}₱${item.amount.toFixed(2)}
-        </div>
-      `;
-      recentList.appendChild(row);
-    });
+
+  if (!recentList) {
+    return;
   }
+
+  recentList.innerHTML = '';
+
+  // Ang API ay nagbabalik na ng records mula latest hanggang oldest.
+  const recent = records.slice(0, 5);
+
+  if (recent.length === 0) {
+    recentList.innerHTML =
+      '<div class="empty-state">No records added yet.</div>';
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  for (const item of recent) {
+    const row = document.createElement('div');
+    row.className = 'record-row';
+
+    const amount = Number(item.amount) || 0;
+    const isProduce = item.type === 'produce';
+
+    row.innerHTML = `
+      <span class="record-dot record-dot--${isProduce ? 'produce' : 'expense'}"></span>
+      <div class="record-name">
+        ${escapeHtml(item.name || '')}
+        <span class="record-meta">
+          • ${escapeHtml(item.date || '')}
+        </span>
+      </div>
+      <div class="record-amount ${
+        isProduce
+          ? 'record-amount--positive'
+          : 'record-amount--negative'
+      }">
+        ${isProduce ? '+' : '-'}₱${amount.toFixed(2)}
+      </div>
+    `;
+
+    fragment.appendChild(row);
+  }
+
+  recentList.appendChild(fragment);
 }
 // ==================== SUBSCRIPTION / USAGE LIMIT ====================
 // BAGO: ang free-plan progress banner ay lumalabas lang sa Dashboard habang
@@ -1784,6 +2406,14 @@ function updateSubscriptionUI() {
 function updateSubscribeStatusText() {
   const el = document.getElementById('subscribe-status-text');
   if (!el) return;
+  // FIX: dating agad na-a-activate ang bayad; ngayon "pending" muna hangga't
+  // hindi ito na-verify/na-a-approve ng admin — ipinapakita ito rito para
+  // hindi mag-akalang bug ang farmer kung bakit hindi pa dumadagdag ang
+  // sessions niya agad-agad.
+  if (usageStatus.hasPendingSubscription) {
+    el.textContent = 'May pending ka pang subscription request — hinihintay pa ang pag-verify at pag-approve ng admin sa GCash reference number mo. Aabisuhan ka rito sa app kapag na-approve na.';
+    return;
+  }
   if (usageStatus.subscriptionStatus === 'active') {
     const remaining = Math.max(0, usageStatus.totalAllowed - usageStatus.cycleCount);
     el.textContent = usageStatus.locked
@@ -1897,38 +2527,84 @@ if (btnRequestSubscription) {
 function renderRecords() {
   const pTbody = document.getElementById('produce-tbody');
   const search = document.getElementById('records-search')?.value.toLowerCase() || '';
-  if (pTbody) {
-    pTbody.innerHTML = '';
-    const prodRecords = records.filter(r => r.type === 'produce' && r.name.toLowerCase().includes(search));
-    if (prodRecords.length === 0) {
-      pTbody.innerHTML = '<tr><td colspan="6" class="empty-state">No product / expense records found.</td></tr>';
-    } else {
-      prodRecords.forEach((item) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>${escapeHtml(item.name)}</strong></td>
-          <td class="align-right">₱${(item.pricePerUnit || 0).toFixed(2)}</td>
-          <td class="align-right record-amount--positive">₱${item.amount.toFixed(2)}</td>
-          <td class="align-right">₱${(item.amount * 0.1).toFixed(2)}</td>
-          <td>${escapeHtml(item.date)}</td>
-          <td class="row-actions-cell"><button class="btn-view-details" onclick="openProduceDetail('${item.id}')">View Expenses for this Product</button><button class="row-delete" onclick="deleteRecord('${item.id}')">Delete</button></td>
-        `;
-        pTbody.appendChild(tr);
-      });
-    }
+
+  if (!pTbody) return;
+
+  pTbody.innerHTML = '';
+
+  const prodRecords = records.filter(
+    r => r.type === 'produce' && (r.name || '').toLowerCase().includes(search)
+  );
+
+  if (prodRecords.length === 0) {
+    pTbody.innerHTML =
+      '<tr><td colspan="6" class="empty-state">No product / expense records found.</td></tr>';
+    return;
   }
+
+  const fragment = document.createDocumentFragment();
+
+  prodRecords.forEach((item) => {
+    const tr = document.createElement('tr');
+
+    const pricePerUnit = Number(item.pricePerUnit) || 0;
+    const amount = Number(item.amount) || 0;
+
+    tr.innerHTML = `
+      <td><strong>${escapeHtml(item.name || '')}</strong></td>
+      <td class="align-right">₱${pricePerUnit.toFixed(2)}</td>
+      <td class="align-right record-amount--positive">₱${amount.toFixed(2)}</td>
+      <td class="align-right">₱${(amount * 0.1).toFixed(2)}</td>
+      <td>${escapeHtml(item.date || '')}</td>
+      <td class="row-actions-cell">
+        <button
+          class="btn-view-details"
+          onclick="openProduceDetail('${item.id}')">
+          View Expenses for this Product
+        </button>
+        <button
+          class="row-delete"
+          onclick="deleteRecord('${item.id}')">
+          Delete
+        </button>
+      </td>
+    `;
+
+    fragment.appendChild(tr);
+  });
+
+  pTbody.appendChild(fragment);
 }
+
 document.getElementById('records-search')?.addEventListener('input', renderRecords);
 async function deleteRecord(id) {
-  if (confirm("Delete this record?")) {
-    try {
-      const res = await fetch(`/api/records/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        await fetchUserDataFromBackend();
-      }
-    } catch (e) {
-      alert("Error deleting record.");
+  if (!confirm('Delete this record?')) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/records/${id}`, {
+      method: 'DELETE'
+    });
+
+    if (!res.ok) {
+      alert('Error deleting record.');
+      return;
     }
+
+    // Tanggalin agad sa local data para hindi na i-download
+    // muli ang buong records list.
+    records = records.filter(
+      record => String(record.id) !== String(id)
+    );
+
+    rebuildProductsByMonthCache();
+    updateDashboard();
+    renderRecords();
+    renderReports();
+    initComputationDropdowns();
+  } catch (e) {
+    alert('Error deleting record.');
   }
 }
 // ==================== PRODUCE VIEW DETAILS: HARVEST COUNTDOWN + LINKED EXPENSES ====================
