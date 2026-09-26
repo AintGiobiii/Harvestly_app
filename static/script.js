@@ -1286,23 +1286,22 @@ function admLinePath(vals, max, w, top, bottom) {
   return d;
 }
 
-function admRenderChart(series) {
+function admRenderUsersChart(series) {
   const svg = document.getElementById('adm-chart');
   const wrap = document.getElementById('adm-chart-wrap');
   if (!svg || !wrap) return;
   const old = wrap.querySelector('.adm-chart-empty');
   if (old) old.remove();
 
-  const produce = series.map(p => p.produce);
-  const expense = series.map(p => p.expense);
-  const max = Math.max(0, ...produce, ...expense);
+  const active = series.map(p => p.activeUsers);
+  const max = Math.max(0, ...active);
 
   if (!series.length || max <= 0) {
     svg.innerHTML = '';
     svg.style.display = 'none';
     const empty = document.createElement('div');
     empty.className = 'adm-chart-empty';
-    empty.textContent = 'Wala pang naitalang ani o gastos sa saklaw na ito.';
+    empty.textContent = 'Wala pang aktibong user sa saklaw na ito.';
     wrap.prepend(empty);
     return;
   }
@@ -1313,9 +1312,8 @@ function admRenderChart(series) {
     .map(t => `<line x1="0" y1="${(BOT - t * (BOT - TOP)).toFixed(1)}" x2="${W}" y2="${(BOT - t * (BOT - TOP)).toFixed(1)}" stroke="#252d38" stroke-width="1" stroke-dasharray="3 5" vector-effect="non-scaling-stroke"/>`)
     .join('');
 
-  const pPath = admLinePath(produce, max, W, TOP, BOT);
-  const ePath = admLinePath(expense, max, W, TOP, BOT);
-  const area = `${pPath} L${W},${BOT} L0,${BOT} Z`;
+  const path = admLinePath(active, max, W, TOP, BOT);
+  const area = `${path} L${W},${BOT} L0,${BOT} Z`;
 
   svg.innerHTML = `
     <defs>
@@ -1326,26 +1324,30 @@ function admRenderChart(series) {
     </defs>
     ${grid}
     <path d="${area}" fill="url(#admFill)" stroke="none"/>
-    <path d="${ePath}" fill="none" stroke="#e8a33d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>
-    <path d="${pPath}" fill="none" stroke="#3fb950" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    <path d="${path}" fill="none" stroke="#3fb950" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
   `;
 }
 
-function admRenderActivity(rows) {
-  const box = document.getElementById('adm-activity');
+function admQty(qty, unit) {
+  const v = Number(qty) || 0;
+  const formatted = v.toLocaleString('en-PH', { maximumFractionDigits: 2 });
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+// "Active Products" monitoring list — product metrics lang (kabuuang ani/
+// yield at halaga), walang farmer/user personal info o username na ipinapakita.
+function admRenderProducts(rows) {
+  const box = document.getElementById('adm-products');
   if (!box) return;
   if (!rows || !rows.length) {
-    box.innerHTML = '<p class="adm-empty">Wala pang naitalang record ang mga farmer.</p>';
+    box.innerHTML = '<p class="adm-empty">Wala pang aktibong produkto sa saklaw na ito.</p>';
     return;
   }
-  const labels = { produce: 'Ani', expense: 'Gastos', income: 'Kita' };
   box.innerHTML = rows.map(r => `
-    <div class="adm-row">
-      <span class="adm-avatar">${escapeHtml(r.avatar || '\u{1F33E}')}</span>
-      <span class="adm-row-name">${escapeHtml(r.farmer || 'Unknown')}<small>${escapeHtml(r.item || '\u2014')}</small></span>
-      <span class="adm-row-date">${escapeHtml(admShortDate(r.date))}</span>
-      <span class="adm-row-amt">${admPeso(r.amount)}</span>
-      <span class="adm-tag adm-tag--${r.type}">${labels[r.type] || 'Record'}</span>
+    <div class="adm-row adm-row--product">
+      <span class="adm-avatar">\u{1F33E}</span>
+      <span class="adm-row-name">${escapeHtml(r.name || 'Unknown')}<small>${r.entries} entr${r.entries === 1 ? 'y' : 'ies'} \u2022 ${escapeHtml(admQty(r.totalQty, r.unit))} total yield</small></span>
+      <span class="adm-row-amt">${admPeso(r.totalAmount)}</span>
     </div>
   `).join('');
 }
@@ -1388,20 +1390,29 @@ async function renderAdminDashboard() {
       }
     }
 
-    const farmersNote = document.getElementById('adm-farmers-note');
-    if (farmersNote) {
-      const rating = d.avgRating ? ` \u2022 \u2605 ${d.avgRating} avg rating` : '';
-      farmersNote.textContent = `${d.totalFarmers} farmer \u2022 ${d.subscribedFarmers} may bayad na session${rating}`;
+    // ACTIVE USERS ANALYTICS (growth + engagement)
+    const usersTotalEl = document.getElementById('adm-users-total');
+    if (usersTotalEl) usersTotalEl.textContent = d.totalFarmers;
+    const usersActiveEl = document.getElementById('adm-users-active');
+    if (usersActiveEl) usersActiveEl.textContent = d.activeFarmers;
+    const usersSubEl = document.getElementById('adm-users-subscribed');
+    if (usersSubEl) usersSubEl.textContent = d.subscribedFarmers;
+    admSetDelta('adm-users-active-delta', d.activeFarmersChange);
+
+    // ACTIVE PRODUCTS MONITORING (product metrics lang, walang farmer info)
+    const productsNote = document.getElementById('adm-products-note');
+    if (productsNote) {
+      productsNote.textContent = `${d.totalActiveProducts} produktong aktibo sa saklaw na ito`;
     }
 
-    const axis = d.chart || [];
+    const axis = d.usersChart || [];
     if (axis.length) {
       document.getElementById('adm-axis-start').textContent = admShortDate(axis[0].date);
       document.getElementById('adm-axis-mid').textContent = admShortDate(axis[Math.floor(axis.length / 2)].date);
       document.getElementById('adm-axis-end').textContent = admShortDate(axis[axis.length - 1].date);
     }
-    admRenderChart(axis);
-    admRenderActivity(d.activity);
+    admRenderUsersChart(axis);
+    admRenderProducts(d.activeProducts);
   } catch (e) {
     console.error('Error loading admin dashboard:', e);
   }
