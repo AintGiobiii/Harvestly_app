@@ -965,7 +965,16 @@
             </div>
             <label class="field">
               <span>Subject (optional)</span>
-              <input type="text" id="support-subject" maxlength="150" placeholder="hal. Tungkol sa subscription ko">
+              <select id="support-subject">
+                <option value="">-- Piliin ang paksa --</option>
+                <option value="Dashboard">Dashboard</option>
+                <option value="Magdagdag ng gastos">Magdagdag ng gastos</option>
+                <option value="Kita">Kita</option>
+                <option value="Tingnan / hanapin ang records">Tingnan / hanapin ang records</option>
+                <option value="Mga Ulat">Mga Ulat</option>
+                <option value="Mag-subscribe">Mag-subscribe</option>
+                <option value="Others">Others</option>
+              </select>
             </label>
             <label class="field">
               <span>Message</span>
@@ -1123,22 +1132,36 @@
           </div>
         </div>
 
-        <!-- CHART -->
+        <!-- ACTIVE USERS ANALYTICS -->
         <article class="adm-card adm-chart-card">
           <div class="adm-card-head">
-            <h3>Ani vs. Gastos kada araw</h3>
+            <h3>Active Users</h3>
             <div class="adm-range" role="group" aria-label="Saklaw ng petsa">
               <button type="button" class="adm-range-btn" data-range="7">7d</button>
               <button type="button" class="adm-range-btn active" data-range="30">30d</button>
               <button type="button" class="adm-range-btn" data-range="90">90d</button>
             </div>
           </div>
+          <div class="adm-users-stats" id="adm-users-stats">
+            <div class="adm-users-stat">
+              <p class="adm-label">Total Registered Users</p>
+              <p class="adm-users-num" id="adm-users-total">0</p>
+            </div>
+            <div class="adm-users-stat">
+              <p class="adm-label">Active Users (this range)</p>
+              <p class="adm-users-num" id="adm-users-active">0</p>
+              <span class="adm-delta" id="adm-users-active-delta">&mdash;</span>
+            </div>
+            <div class="adm-users-stat">
+              <p class="adm-label">Subscribed Users</p>
+              <p class="adm-users-num" id="adm-users-subscribed">0</p>
+            </div>
+          </div>
           <div class="adm-legend">
-            <span class="adm-leg"><i class="adm-dot adm-dot--produce"></i>Ani</span>
-            <span class="adm-leg"><i class="adm-dot adm-dot--expense"></i>Gastos</span>
+            <span class="adm-leg"><i class="adm-dot adm-dot--produce"></i>Active users per day</span>
           </div>
           <div class="adm-chart-wrap" id="adm-chart-wrap">
-            <svg id="adm-chart" viewBox="0 0 700 200" preserveAspectRatio="none" role="img" aria-label="Line chart ng ani at gastos"></svg>
+            <svg id="adm-chart" viewBox="0 0 700 200" preserveAspectRatio="none" role="img" aria-label="Line chart ng aktibong users"></svg>
             <div class="adm-chart-axis">
               <span id="adm-axis-start">&mdash;</span>
               <span id="adm-axis-mid">&mdash;</span>
@@ -1147,13 +1170,13 @@
           </div>
         </article>
 
-        <!-- RECENT ACTIVITY -->
+        <!-- ACTIVE PRODUCTS MONITORING -->
         <article class="adm-card adm-table-card">
           <div class="adm-card-head">
-            <h3>Pinakabagong Talaan</h3>
-            <span class="adm-foot-note" id="adm-farmers-note">&mdash;</span>
+            <h3>Active Products</h3>
+            <span class="adm-foot-note" id="adm-products-note">&mdash;</span>
           </div>
-          <div class="adm-rows" id="adm-activity"></div>
+          <div class="adm-rows adm-rows--products" id="adm-products"></div>
         </article>
       </section>
       <section id="screen-admin-support" class="screen">
