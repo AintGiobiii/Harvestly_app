@@ -590,8 +590,8 @@ button, input, select {
   padding: 2px 8px; border-radius: 999px;
 }
 /* APP SHELL */
-.app-shell { display: none; min-height: 100vh; }
-.app-shell.active { display: flex; }
+.app-shell { display: none; min-height: 100vh; width: 100%; }
+.app-shell.active { display: flex; width: 100%; }
 .sidebar {
   width: 232px; flex-shrink: 0; background: var(--forest); color: #EFF5F1;
   display: flex; flex-direction: column; padding: 20px 14px;
@@ -614,7 +614,11 @@ button, input, select {
 .sidebar-data-actions .nav-item { font-size: 13px; }
 .nav-item--logout { margin-top: auto; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 14px; color: #E2B3A6; }
 .nav-item--logout:hover { color: #fff; background: rgba(180,67,47,0.25); }
-.main { flex: 1; min-width: 0; padding: 0 0 60px; }
+/* Pinapatiyak dito na palaging pupunuin ng main content area ang buong
+   natitirang lapad ng screen (edge-to-edge) sa tabi ng sidebar, sa halip na
+   mag-iwan ng malaking blangkong espasyo sa kanan sa malapad na mga screen. */
+.main { flex: 1 1 0%; min-width: 0; width: 100%; max-width: 100%; padding: 0 0 60px; box-sizing: border-box; }
+.main .screen { width: 100%; box-sizing: border-box; }
 .topbar {
   display: flex; align-items: center; gap: 14px; padding: 20px 32px;
   border-bottom: 1px solid var(--border); background: var(--paper); position: sticky; top: 0; z-index: 5;
@@ -1113,6 +1117,9 @@ button, input, select {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  /* Itinutulak ang "Delete" papunta sa dulong-kanan ng column, habang
+     nananatili sa kaliwa ang "View Expenses..." button. */
+  justify-content: space-between;
 }
 #pd-countdown.pd-countdown--overdue { color: var(--gold); }
 /* ==================== STAR RATING ==================== */
@@ -1407,6 +1414,18 @@ button, input, select {
   transition: background .15s ease, color .15s ease;
 }
 .adm-range-btn.active { background: var(--adm-green); color: #fff; }
+/* --- Active Users stat row (Admin dashboard) --- */
+.adm-users-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  margin: 10px 0 4px;
+}
+.adm-users-stat {
+  background: var(--adm-panel-2); border-radius: 10px; padding: 12px 14px;
+}
+.adm-users-num { margin: 2px 0 4px; font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--adm-text); }
+@media (max-width: 760px) {
+  .adm-users-stats { grid-template-columns: 1fr; }
+}
 .adm-legend { display: flex; gap: 16px; margin: 12px 0 6px; }
 .adm-leg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--adm-muted); }
 .adm-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
@@ -1453,6 +1472,9 @@ button, input, select {
 .adm-tag--produce { background: var(--adm-green-soft); color: var(--adm-green); }
 .adm-tag--expense { background: rgba(232, 163, 61, 0.16); color: var(--adm-gold); }
 .adm-tag--income { background: rgba(88, 166, 255, 0.16); color: #58a6ff; }
+/* Active Products row — 3 columns lang (avatar, product + meta, kabuuang
+   halaga); walang farmer/date/tag column dahil product metrics lang ito. */
+.adm-row--product { grid-template-columns: 30px minmax(0, 1fr) auto; }
 .adm-foot-note { font-size: 12px; color: var(--adm-muted); }
 .adm-empty { padding: 26px 6px; text-align: center; color: var(--adm-muted); font-size: 13px; }
 
