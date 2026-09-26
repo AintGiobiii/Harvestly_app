@@ -1332,17 +1332,32 @@ def admin_dashboard():
         daily = {}   
 
         for i in range(days):
-            daily[(start + timedelta(days=i)).isoformat()] = {'produce': 0.0, 'expense': 0.0}
+            daily[(start + timedelta(days=i)).isoformat()] = {'produce': 0.0, 'expense': 0.0, 'users': set()}
+
+        # Pinagsama-samang kabuuan per product (para sa "Active Products"
+        # monitoring list) — walang pangalan/username ng farmer dito, product
+        # metrics lang ang kasama.
+        product_totals = {}
 
         for r in records:
             amt = float(r.amount or 0)
             if in_range(r.date, s_cur, s_today):
                 active_cur.add(r.user_id)
+                if r.date in daily:
+                    daily[r.date]['users'].add(r.user_id)
                 if r.type == 'produce':
                     produce_cur += amt
                     produce_count_cur += 1
                     if r.date in daily:
                         daily[r.date]['produce'] += amt
+                    key = r.name or 'Unknown'
+                    if key not in product_totals:
+                        product_totals[key] = {'name': key, 'totalQty': 0.0, 'unit': r.unit or '', 'totalAmount': 0.0, 'entries': 0}
+                    product_totals[key]['totalQty'] += float(r.qty or 0)
+                    product_totals[key]['totalAmount'] += amt
+                    product_totals[key]['entries'] += 1
+                    if r.unit and not product_totals[key]['unit']:
+                        product_totals[key]['unit'] = r.unit
                 elif r.type == 'expense':
                     expense_cur += amt
                     if r.date in daily:
@@ -1358,8 +1373,18 @@ def admin_dashboard():
         income_cur = sum(float(i.amount or 0) for i in incomes if in_range(i.date, s_cur, s_today))
         income_prev = sum(float(i.amount or 0) for i in incomes if in_range(i.date, s_prev, e_prev))
 
-        chart = [
-            {'date': d, 'produce': round(v['produce'], 2), 'expense': round(v['expense'], 2)}
+        # Isama rin ang mga user na may Actual Income entry sa "active users
+        # per day" na bilang, para tumpak ang engagement chart.
+        for i in incomes:
+            if in_range(i.date, s_cur, s_today):
+                active_cur.add(i.user_id)
+                if i.date in daily:
+                    daily[i.date]['users'].add(i.user_id)
+            elif in_range(i.date, s_prev, e_prev):
+                active_prev.add(i.user_id)
+
+        users_chart = [
+            {'date': d, 'activeUsers': len(v['users'])}
             for d, v in sorted(daily.items())
         ]
 
@@ -1371,30 +1396,17 @@ def admin_dashboard():
         rated = [r.rating for r in records if r.rating]
         avg_rating = round(sum(rated) / len(rated), 1) if rated else None
 
-        names = {u.id: (u.full_name or u.username, u.avatar) for u in User.query.all()}
-        activity = []
-        for r in sorted(records, key=lambda x: (x.date or '', x.id), reverse=True)[:12]:
-            who, av = names.get(r.user_id, ('Unknown', '🌾'))
-            activity.append({
-                'farmer': who, 'avatar': av, 'item': r.name,
-                'category': r.category or '—', 'date': r.date,
-                'amount': round(float(r.amount or 0), 2),
-                'type': 'produce' if r.type == 'produce' else 'expense',
-                'sort': (r.date or '', r.id),
-            })
-        for i in sorted(incomes, key=lambda x: (x.date or '', x.id), reverse=True)[:6]:
-            who, av = names.get(i.user_id, ('Unknown', '🌾'))
-            activity.append({
-                'farmer': who, 'avatar': av, 'item': i.product_name or 'Aktwal na kita',
-                'category': 'Benta', 'date': i.date,
-                'amount': round(float(i.amount or 0), 2),
-                'type': 'income',
-                'sort': (i.date or '', i.id),
-            })
-        activity.sort(key=lambda a: a['sort'], reverse=True)
-        for a in activity:
-            a.pop('sort', None)
-        activity = activity[:8]
+        # "Active Products" monitoring list — kabuuang ani/yield per product,
+        # pinagsunod-sunod mula sa pinakamataas na kabuuang halaga. Top 10 lang
+        # ipinapakita para di masyadong mahaba, pero ang total count ay
+        # ipinapadala rin (totalActiveProducts) para sa footer note. Walang
+        # farmer/user info dito — product metrics lang.
+        active_products = sorted(product_totals.values(), key=lambda p: p['totalAmount'], reverse=True)
+        for p in active_products:
+            p['totalQty'] = round(p['totalQty'], 2)
+            p['totalAmount'] = round(p['totalAmount'], 2)
+        total_active_products = len(active_products)
+        active_products = active_products[:10]
 
         net_cur = produce_cur - expense_cur
         net_prev = produce_prev - expense_prev
@@ -1420,8 +1432,9 @@ def admin_dashboard():
             'openConcerns': open_concerns,
             'totalConcerns': total_concerns,
             'avgRating': avg_rating,
-            'chart': chart,
-            'activity': activity,
+            'usersChart': users_chart,
+            'activeProducts': active_products,
+            'totalActiveProducts': total_active_products,
         })
     except Exception as e:
         db.session.rollback()
